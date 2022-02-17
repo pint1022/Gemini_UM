@@ -15,7 +15,7 @@
 # path to torch include path
 TORCH_INCLUDE_PATH ?= /home/steven/anaconda3/lib/python3.9/site-packages/torch/include
 # path to CUDA installation
-CUDA_PATH ?= /usr/local/cuda-10.0
+CUDA_PATH ?= /usr/local/cuda
 CUPTI_PATH=/usr/local/cuda/extras/CUPTI
 PWD := $(shell pwd)
 PREFIX ?= $(PWD)/..

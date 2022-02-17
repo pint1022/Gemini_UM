@@ -54,7 +54,7 @@
 #include "debug.h"
 #include "predictor.h"
 #include "util.h"
-#include "c10/cuda/CUDACachingAllocator.h" // include torch caching allocator library
+#include <c10/cuda/CUDACachingAllocator.h> // include torch caching allocator library
 std::vector<CUdeviceptr> memory_list;
 extern "C" {
 void *__libc_dlsym(void *map, const char *name);

@@ -13,14 +13,14 @@
 # limitations under the License.
 
 # path to torch include path
-TORCH_INCLUDE_PATH ?= /home/deployer/anaconda2/envs/test/lib/python3.7/site-packages/torch/include
+TORCH_INCLUDE_PATH ?= /home/steven/anaconda3/lib/python3.9/site-packages/torch/include
 # path to CUDA installation
 CUDA_PATH ?= /usr/local/cuda-10.0
 CUPTI_PATH=/usr/local/cuda/extras/CUPTI
 PWD := $(shell pwd)
 PREFIX ?= $(PWD)/..
 
-SMS ?= 30 35 37 50 52 60 61 70
+SMS ?= 35 37 50 52 60 61 70
 GENCODE_FLAGS += $(foreach sm,$(SMS),-gencode arch=compute_$(sm),code=sm_$(sm))
 
 CXX ?= g++
@@ -29,7 +29,7 @@ NVCC ?= $(CUDA_PATH)/bin/nvcc -ccbin $(CXX)
 CUDA_LDFLAGS += -lcuda -L$(CUDA_PATH)/lib64 -L$(CUDA_PATH)/lib64/stubs -lcuda -L$(CUPTI_PATH)/lib64 -lcupti
 LDFLAGS += -ldl -lrt
 
-CXXFLAGS += -std=c++11 -fPIC -I$(TORCH_INCLUDE_PATH)
+CXXFLAGS += -std=c++14 -fPIC -I$(TORCH_INCLUDE_PATH)
 
 ifeq ($(DEBUG),1)
 CXXFLAGS += -g -D_DEBUG -Wall

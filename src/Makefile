@@ -13,7 +13,7 @@
 # limitations under the License.
 
 # path to torch include path
-TORCH_INCLUDE_PATH ?=/home/user/miniconda/lib/python3.8/site-packages/torch/include
+TORCH_INCLUDE_PATH ?=/home/deployer/miniconda/lib/python3.9/site-packages/torch/include
 # path to CUDA installation
 CUDA_PATH ?= /usr/local/cuda
 CUPTI_PATH=/usr/local/cuda/extras/CUPTI

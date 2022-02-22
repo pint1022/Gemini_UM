@@ -447,7 +447,7 @@ void *wait_cuda_kernels(void *args) {
     cudaEventRecord(event);
     cudaEventSynchronize(event);
     //flush memory using torch API
-    c10::cuda::CUDACachingAllocator::emptyCache();
+    // c10::cuda::CUDACachingAllocator::emptyCache();
     // notify predictor we've done a synchronize
     host_sync_call("overuse measurement");
 

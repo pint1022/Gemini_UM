@@ -233,7 +233,7 @@ int establish_connection() {
       [&]() -> int { return connect(sockfd, (struct sockaddr *)&info, sizeof(info)); },
       NET_OP_MAX_ATTEMPT, NET_OP_RETRY_INTV);
   if (rc != 0) {
-    ERROR("Connection error: %s,ip %s, port %s", strerror(rc),pod_manager_ip, pod_manager_port);
+    ERROR("Connection error: %s", strerror(rc));
     exit(rc);
   }
 

@@ -54,7 +54,7 @@
 #include "debug.h"
 #include "predictor.h"
 #include "util.h"
-#include <c10/cuda/CUDACachingAllocator.h> // include torch caching allocator library
+// #include <c10/cuda/CUDACachingAllocator.h> // include torch caching allocator library
 std::vector<CUdeviceptr> memory_list;
 extern "C" {
 void *__libc_dlsym(void *map, const char *name);
@@ -233,7 +233,7 @@ int establish_connection() {
       [&]() -> int { return connect(sockfd, (struct sockaddr *)&info, sizeof(info)); },
       NET_OP_MAX_ATTEMPT, NET_OP_RETRY_INTV);
   if (rc != 0) {
-    ERROR("Connection error: %s", strerror(rc));
+    ERROR("Connection error: %s,ip %s, port %s", strerror(rc),pod_manager_ip, pod_manager_port);
     exit(rc);
   }
 

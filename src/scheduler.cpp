@@ -53,7 +53,7 @@
 #include <thread>
 #include <typeinfo>
 #include <vector>
-
+#include <gio/gio.h>
 #include "debug.h"
 #include "util.h"
 #ifdef RANDOM_QUOTA
@@ -170,18 +170,19 @@ std::list<candidate_t> candidates;
 pthread_mutex_t candidate_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t candidate_cond;  // initialized with CLOCK_MONOTONIC in main()
 
-void read_resource_config() {
+void read_resource_config(char* full_path) {
   std::fstream fin;
   ClientInfo *client_inf;
-  char client_name[HOST_NAME_MAX], full_path[PATH_MAX];
+  char client_name[HOST_NAME_MAX];
+  //, full_path[PATH_MAX];
   size_t gpu_memory_size;
   double gpu_min_fraction, gpu_max_fraction;
   int container_num;
 
-  bzero(full_path, PATH_MAX);
-  strncpy(full_path, limit_file_dir, PATH_MAX);
-  if (limit_file_dir[strlen(limit_file_dir) - 1] != '/') full_path[strlen(limit_file_dir)] = '/';
-  strncat(full_path, limit_file_name, PATH_MAX - strlen(full_path));
+  // bzero(full_path, PATH_MAX);
+  // strncpy(full_path, limit_file_dir, PATH_MAX);
+  // if (limit_file_dir[strlen(limit_file_dir) - 1] != '/') full_path[strlen(limit_file_dir)] = '/';
+  // strncat(full_path, limit_file_name, PATH_MAX - strlen(full_path));
 
   // Read GPU limit usage
   fin.open(full_path, std::ios::in);
@@ -204,6 +205,20 @@ void read_resource_config() {
          gpu_max_fraction, gpu_memory_size);
   }
   fin.close();
+}
+
+// Callback function when resource config file is changed.
+// Monitor the change to resource config file, and spawn new client group management threads if
+// needed.
+void onResourceConfigFileUpdate(GFileMonitor *monitor, GFile *file, GFile *other_file,
+                                GFileMonitorEvent event_type, gpointer user_data) {
+  if (event_type == G_FILE_MONITOR_EVENT_CHANGED || event_type == G_FILE_MONITOR_EVENT_CREATED) {
+    INFO("Update resource configurations...");
+
+    char *path = g_file_get_path(file);
+    read_resource_config(path);
+    g_free(path);
+  }
 }
 
 
@@ -352,7 +367,7 @@ void handle_message(int client_sock, char *message) {
   attached = parse_request(message, &client_name, &hostname_len, &req_id, &req);
 
   if (client_info_map.find(string(client_name)) == client_info_map.end()) {
-    WARNING("Unknown client \"%s\". Ignore this request.", client_name);
+    WARNING("%d: Unknown client \"%s\". Ignore this request.", __LINE__, client_name);
     return;
   }
   client_inf = client_info_map[string(client_name)];
@@ -529,14 +544,31 @@ int main(int argc, char *argv[]) {
 
   // read configuration file
   read_resource_config();
+  // Watch for newcomers (new ClientGroup).
+  char fullpath[PATH_MAX];
+  snprintf(fullpath, PATH_MAX, "%s/%s", limit_file_dir, limit_file_name);
+  read_resource_config(fullpath);
+
+  GError *err = nullptr;
+  GFile *file = g_file_new_for_path(fullpath);
+  if (file == nullptr) {
+    ERROR("Failed to construct GFile for %s", fullpath);
+    exit(EXIT_FAILURE);
+  }
+  GFileMonitor *monitor = g_file_monitor(file, G_FILE_MONITOR_NONE, nullptr, &err);
+  if (monitor == nullptr || err != nullptr) {
+    ERROR("Failed to create monitor for %s: %s", fullpath, err->message);
+    exit(EXIT_FAILURE);
+  }
+  INFO(" Monitor thread created on %s.\n", fullpath);
+
+  g_signal_connect(monitor, "changed", G_CALLBACK(onResourceConfigFileUpdate), nullptr);
 
   int rc;
   int sockfd = 0;
   int forClientSockfd = 0;
   struct sockaddr_in clientInfo;
   int addrlen = sizeof(clientInfo);
-
-  
 
   sockfd = socket(AF_INET, SOCK_STREAM, 0);
   if (sockfd == -1) {
@@ -558,6 +590,7 @@ int main(int argc, char *argv[]) {
   listen(sockfd, SOMAXCONN);
 
   pthread_t tid;
+
 
   // initialize candidate_cond with CLOCK_MONOTONIC
   pthread_condattr_t attr_monotonic_clock;

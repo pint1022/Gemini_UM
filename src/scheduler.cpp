@@ -554,6 +554,7 @@ int main(int argc, char *argv[]) {
     ERROR("cannot bind port");
     exit(-1);
   }
+  DEBUG("scheduler port: %s\n", schd_port);
   listen(sockfd, SOMAXCONN);
 
   pthread_t tid;

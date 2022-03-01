@@ -42,7 +42,7 @@ void sprint_date(char *buf, const size_t len) {
     va_start(args, format);                                      \
     vsnprintf(buf, DEBUG_MSG_LEN, format, args);                 \
                                                                  \
-    fprintf(stderr, "%s Gemini " level "/ %s\n", date_buf, buf); \
+    fprintf(stderr, "%s Gemini_UM " level "/ %s\n", date_buf, buf); \
   }
 
 #ifdef _DEBUG

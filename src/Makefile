@@ -19,9 +19,11 @@ CUDA_PATH ?= /usr/local/cuda
 CUPTI_PATH=/usr/local/cuda/extras/CUPTI
 PWD := $(shell pwd)
 PREFIX ?= $(PWD)/..
+PKGCONFIG = /usr/bin/pkg-config
 
 SMS ?= 35 37 50 52 60 61 70
 GENCODE_FLAGS += $(foreach sm,$(SMS),-gencode arch=compute_$(sm),code=sm_$(sm))
+
 
 CXX ?= g++
 NVCC ?= $(CUDA_PATH)/bin/nvcc -ccbin $(CXX)
@@ -30,6 +32,9 @@ CUDA_LDFLAGS += -lcuda -L$(CUDA_PATH)/lib64 -L$(CUDA_PATH)/lib64/stubs -lcuda -L
 LDFLAGS += -ldl -lrt
 
 CXXFLAGS += -std=c++14 -fPIC -I$(TORCH_INCLUDE_PATH)
+EXTLIBS = libzmq glib-2.0 gio-2.0
+CXXFLAGS += $(foreach ext,$(EXTLIBS),$(shell $(PKGCONFIG) --cflags $(ext)))
+LDFLAGS += $(foreach ext,$(EXTLIBS),$(shell $(PKGCONFIG) --libs $(ext)))
 
 ifeq ($(DEBUG),1)
 CXXFLAGS += -g -D_DEBUG -Wall

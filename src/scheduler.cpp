@@ -543,7 +543,8 @@ int main(int argc, char *argv[]) {
 #endif
 
   // read configuration file
-  read_resource_config();
+  // read_resource_config();
+
   // Watch for newcomers (new ClientGroup).
   char fullpath[PATH_MAX];
   snprintf(fullpath, PATH_MAX, "%s/%s", limit_file_dir, limit_file_name);

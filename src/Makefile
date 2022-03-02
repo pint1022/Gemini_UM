@@ -24,15 +24,14 @@ PKGCONFIG = /usr/bin/pkg-config
 SMS ?= 35 37 50 52 60 61 70
 GENCODE_FLAGS += $(foreach sm,$(SMS),-gencode arch=compute_$(sm),code=sm_$(sm))
 
-
 CXX ?= g++
 NVCC ?= $(CUDA_PATH)/bin/nvcc -ccbin $(CXX)
 
 CUDA_LDFLAGS += -lcuda -L$(CUDA_PATH)/lib64 -L$(CUDA_PATH)/lib64/stubs -lcuda -L$(CUPTI_PATH)/lib64 -lcupti
 LDFLAGS += -ldl -lrt
 
-CXXFLAGS += -std=c++14 -fPIC -I$(TORCH_INCLUDE_PATH)
-EXTLIBS = libzmq glib-2.0 gio-2.0
+CXXFLAGS +=  -fPIC -I$(TORCH_INCLUDE_PATH)
+EXTLIBS = glib-2.0 gio-2.0 
 CXXFLAGS += $(foreach ext,$(EXTLIBS),$(shell $(PKGCONFIG) --cflags $(ext)))
 LDFLAGS += $(foreach ext,$(EXTLIBS),$(shell $(PKGCONFIG) --libs $(ext)))
 
@@ -69,9 +68,15 @@ schd-priority.o: schd-priority.cpp scheduler.h
 	$(EXEC) g++ $(CXXFLAGS) -o $@ -c $<
 
 gem-schd: scheduler.o schd-priority.o debug.o comm.o
-	$(EXEC) g++ $(LDFLAGS) -pthread -rdynamic $+ -o $@
+	$(EXEC) g++  $+ $(LDFLAGS)  -pthread -rdynamic -o $@
 	$(EXEC) mkdir -p $(PREFIX)/bin
 	$(EXEC) cp $@ $(PREFIX)/bin
+
+# gem-schd: scheduler.o schd-priority.o debug.o parse-config.o comm
+# 	$(CXX) scheduler.o schd-priority.o debug.o parse-config.o $(COMM_OBJS) \
+# 		$(LDFLAGS) -pthread -o $@
+# 	mkdir -p $(PREFIX)/bin
+# 	$(INSTALL) -s -m 755 -t $(PREFIX)/bin $@
 
 pod-manager.o: pod-manager.cpp debug.h comm.h util.h
 	$(EXEC) g++ $(CXXFLAGS) -o $@ -c $<

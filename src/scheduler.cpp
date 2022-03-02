@@ -53,6 +53,8 @@
 #include <thread>
 #include <typeinfo>
 #include <vector>
+#include <glib.h>
+
 #include <gio/gio.h>
 #include "debug.h"
 #include "util.h"

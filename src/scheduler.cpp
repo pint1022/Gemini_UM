@@ -479,42 +479,42 @@ void *pod_client_func(void *args) {
   pthread_exit(NULL);
 }
 
-void *podGroupMgmt(void * sockfd) {
-  struct sockaddr_in clientInfo;
-  int addrlen = sizeof(clientInfo);
-  int forClientSockfd = 0;
+// void *podGroupMgmt(int sockfd) {
+//   struct sockaddr_in clientInfo;
+//   int addrlen = sizeof(clientInfo);
+//   int forClientSockfd = 0;
 
-  INFO("Waiting for incoming connection: %d", *(int*) sockfd);
+//   INFO("Waiting for incoming connection: %d", *(int*) sockfd);
 
-  // while (
-  //     (forClientSockfd = accept( *(int*) sockfd, (struct sockaddr *)&clientInfo, (socklen_t *)&addrlen))) {
-  //   INFO("Received an incoming connection. %d\n", *(int*)sockfd);
-  //   pthread_t tid;
-  //   int *pod_sockfd = new int;
-  //   *pod_sockfd = forClientSockfd;
-  //   // create a thread to service this Pod manager
-  //   pthread_create(&tid, NULL, pod_client_func, pod_sockfd);
-  //   pthread_detach(tid);
-  // }
-  if (forClientSockfd < 0) {
-    ERROR("Accept failed");
-  }
+//   while (
+//       (forClientSockfd = accept( *(int*) sockfd, (struct sockaddr *)&clientInfo, (socklen_t *)&addrlen))) {
+//     INFO("Received an incoming connection. %d\n", *(int*)sockfd);
+//     pthread_t tid;
+//     int *pod_sockfd = new int;
+//     *pod_sockfd = forClientSockfd;
+//     // create a thread to service this Pod manager
+//     pthread_create(&tid, NULL, pod_client_func, pod_sockfd);
+//     pthread_detach(tid);
+//   }
+//   if (forClientSockfd < 0) {
+//     ERROR("Accept failed");
+//   }
 
-  pthread_exit(nullptr);
-}
+//   pthread_exit(nullptr);
+// }
 
-// Create pod group management threads in detached state.
-void spawnClientGroupThreads(int sockfd) {
-    pthread_t tid;
-    INFO("Received sockfd. %d\n", sockfd);
+// // Create pod group management threads in detached state.
+// void spawnClientGroupThreads(int sockfd) {
+//     pthread_t tid;
+//     INFO("Received sockfd. %d\n", sockfd);
 
-    int rc = pthread_create(&tid, nullptr, podGroupMgmt, &sockfd);
-    if (rc != 0) {
-      ERROR("Failed to create pod group management thread: %s", strerror(rc));
-      exit(rc);
-    }
-    pthread_detach(tid);
-}
+//     int rc = pthread_create(&tid, nullptr, podGroupMgmt, &sockfd);
+//     if (rc != 0) {
+//       ERROR("Failed to create pod group management thread: %s", strerror(rc));
+//       exit(rc);
+//     }
+//     pthread_detach(tid);
+// }
 
 int main(int argc, char *argv[]) {
   uint16_t schd_port = 50051;
@@ -633,7 +633,7 @@ int main(int argc, char *argv[]) {
   char fullpath[PATH_MAX];
   snprintf(fullpath, PATH_MAX, "%s/%s", limit_file_dir, limit_file_name);
   read_resource_config(fullpath);
-  spawnClientGroupThreads(sockfd);
+  // spawnClientGroupThreads(sockfd);
   // INFO("Waiting for incoming connection");
 
   // while (

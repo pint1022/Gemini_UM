@@ -665,9 +665,12 @@ int main(int argc, char *argv[]) {
   g_signal_connect(monitor, "changed", G_CALLBACK(onResourceConfigFileUpdate), nullptr);
   // Wait for file change events
   main_loop = g_main_loop_new(nullptr, false);
+  g_assert(main_loop);
+
   g_main_loop_run(main_loop);
 
   g_object_unref(monitor);
+  return 0;
 }
 
 void sig_handler(int sig) {

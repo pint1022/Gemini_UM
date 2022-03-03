@@ -629,51 +629,51 @@ int main(int argc, char *argv[])
     if (verbosity > 0) signal(SIGINT, dump_history);
   #endif
 
-    // int rc;
-    // int sockfd = 0;
-    // // int forClientSockfd = 0;
-    // // struct sockaddr_in clientInfo;
-    // // int addrlen = sizeof(clientInfo);
+    int rc;
+    int sockfd = 0;
+    // int forClientSockfd = 0;
+    // struct sockaddr_in clientInfo;
+    // int addrlen = sizeof(clientInfo);
 
-    // sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    // if (sockfd == -1) {
-    //   ERROR("Fail to create a socket!");
-    //   exit(-1);
-    // }
+    sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (sockfd == -1) {
+      ERROR("Fail to create a socket!");
+      exit(-1);
+    }
 
-    // struct sockaddr_in serverInfo;
-    // bzero(&serverInfo, sizeof(serverInfo));
+    struct sockaddr_in serverInfo;
+    bzero(&serverInfo, sizeof(serverInfo));
 
-    // serverInfo.sin_family = PF_INET;
-    // serverInfo.sin_addr.s_addr = INADDR_ANY;
-    // serverInfo.sin_port = htons(schd_port);
-    // if (bind(sockfd, (struct sockaddr *)&serverInfo, sizeof(serverInfo)) < 0) {
-    //   ERROR("cannot bind port");
-    //   exit(-1);
-    // }
-    // DEBUG("%d: scheduler port: %ld\n", __LINE__, schd_port);
-    // listen(sockfd, SOMAXCONN);
+    serverInfo.sin_family = PF_INET;
+    serverInfo.sin_addr.s_addr = INADDR_ANY;
+    serverInfo.sin_port = htons(schd_port);
+    if (bind(sockfd, (struct sockaddr *)&serverInfo, sizeof(serverInfo)) < 0) {
+      ERROR("cannot bind port");
+      exit(-1);
+    }
+    DEBUG("%d: scheduler port: %ld\n", __LINE__, schd_port);
+    listen(sockfd, SOMAXCONN);
 
-    // pthread_t tid;
+    pthread_t tid;
 
 
-    // // initialize candidate_cond with CLOCK_MONOTONIC
-    // pthread_condattr_t attr_monotonic_clock;
-    // pthread_condattr_init(&attr_monotonic_clock);
-    // pthread_condattr_setclock(&attr_monotonic_clock, CLOCK_MONOTONIC);
-    // pthread_cond_init(&candidate_cond, &attr_monotonic_clock);
+    // initialize candidate_cond with CLOCK_MONOTONIC
+    pthread_condattr_t attr_monotonic_clock;
+    pthread_condattr_init(&attr_monotonic_clock);
+    pthread_condattr_setclock(&attr_monotonic_clock, CLOCK_MONOTONIC);
+    pthread_cond_init(&candidate_cond, &attr_monotonic_clock);
 
-    // rc = pthread_create(&tid, NULL, schedule_daemon_func, NULL);
-    // if (rc != 0) {
-    //   ERROR("Return code from pthread_create(): %d", rc);
-    //   exit(rc);
-    // }
+    rc = pthread_create(&tid, NULL, schedule_daemon_func, NULL);
+    if (rc != 0) {
+      ERROR("Return code from pthread_create(): %d", rc);
+      exit(rc);
+    }
     pthread_detach(tid);
-
+    
     char fullpath[PATH_MAX];
     snprintf(fullpath, PATH_MAX, "%s/%s", limit_file_dir, limit_file_name);
     read_resource_config(fullpath);
-    // spawnClientGroupThreads(sockfd);
+    spawnClientGroupThreads(sockfd);
     GFile *f = g_file_new_for_path(fullpath);
     g_assert(f);
 

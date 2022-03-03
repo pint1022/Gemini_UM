@@ -648,14 +648,17 @@ int main(int argc, char *argv[]) {
   //   return 1;
   // }
   // return 0;
-
+ // Wait for file change events
+  main_loop = g_main_loop_new(nullptr, false);
+  g_assert(main_loop);
+  
   GError *err = nullptr;
   GFile *file = g_file_new_for_path(fullpath);
   if (file == nullptr) {
     ERROR("Failed to construct GFile for %s", fullpath);
     exit(EXIT_FAILURE);
   }
-  GFileMonitor *monitor = g_file_monitor(file, G_FILE_MONITOR_NONE, nullptr, &err);
+  GFileMonitor *monitor = g_file_monitor(file, G_FILE_MONITOR_WATCH_MOVES, nullptr, &err);
   if (monitor == nullptr || err != nullptr) {
     ERROR("Failed to create monitor for %s: %s", fullpath, err->message);
     exit(EXIT_FAILURE);
@@ -666,9 +669,7 @@ int main(int argc, char *argv[]) {
   // g_print("monitoring %s\n", fpath);
   INFO(" Monitor thread created on %s.\n", fullpath);
   g_free(fpath);
-  // Wait for file change events
-  main_loop = g_main_loop_new(nullptr, false);
-  g_assert(main_loop);
+ 
 
   g_main_loop_run(main_loop);
 

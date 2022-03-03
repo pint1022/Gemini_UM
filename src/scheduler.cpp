@@ -563,116 +563,117 @@ void spawnClientGroupThreads(int sockid) {
 
 int main(int argc, char *argv[])
 {
-  uint16_t schd_port = 50051;
-  // parse command line options
-  const char *optstring = "P:q:m:w:f:p:v:h";
-  struct option opts[] = {{"port", required_argument, nullptr, 'P'},
-                          {"quota", required_argument, nullptr, 'q'},
-                          {"min_quota", required_argument, nullptr, 'm'},
-                          {"window", required_argument, nullptr, 'w'},
-                          {"limit_file", required_argument, nullptr, 'f'},
-                          {"limit_file_dir", required_argument, nullptr, 'p'},
-                          {"verbose", required_argument, nullptr, 'v'},
-                          {"help", no_argument, nullptr, 'h'},
-                          {nullptr, 0, nullptr, 0}};
-  int opt;
-  while ((opt = getopt_long(argc, argv, optstring, opts, NULL)) != -1) {
-    switch (opt) {
-      case 'P':
-        schd_port = strtoul(optarg, nullptr, 10);
-        break;
-      case 'q':
-        QUOTA = atof(optarg);
-        break;
-      case 'm':
-        MIN_QUOTA = atof(optarg);
-        break;
-      case 'w':
-        WINDOW_SIZE = atof(optarg);
-        break;
-      case 'f':
-        strncpy(limit_file_name, optarg, PATH_MAX - 1);
-        break;
-      case 'p':
-        strncpy(limit_file_dir, optarg, PATH_MAX - 1);
-        break;
-      case 'v':
-        verbosity = atoi(optarg);
-        break;
-      case 'h':
-        printf("usage: %s [options]\n", argv[0]);
-        puts("Options:");
-        puts("    -P [PORT], --port [PORT]");
-        puts("    -q [QUOTA], --quota [QUOTA]");
-        puts("    -m [MIN_QUOTA], --min_quota [MIN_QUOTA]");
-        puts("    -w [WINDOW_SIZE], --window [WINDOW_SIZE]");
-        puts("    -f [LIMIT_FILE], --limit_file [LIMIT_FILE]");
-        puts("    -p [LIMIT_FILE_DIR], --limit_file_dir [LIMIT_FILE_DIR]");
-        puts("    -v [LEVEL], --verbose [LEVEL]");
-        puts("    -h, --help");
-        return 0;
-      default:
-        break;
+    uint16_t schd_port = 50051;
+    // parse command line options
+    const char *optstring = "P:q:m:w:f:p:v:h";
+    struct option opts[] = {{"port", required_argument, nullptr, 'P'},
+                            {"quota", required_argument, nullptr, 'q'},
+                            {"min_quota", required_argument, nullptr, 'm'},
+                            {"window", required_argument, nullptr, 'w'},
+                            {"limit_file", required_argument, nullptr, 'f'},
+                            {"limit_file_dir", required_argument, nullptr, 'p'},
+                            {"verbose", required_argument, nullptr, 'v'},
+                            {"help", no_argument, nullptr, 'h'},
+                            {nullptr, 0, nullptr, 0}};
+    int opt;
+    while ((opt = getopt_long(argc, argv, optstring, opts, NULL)) != -1) {
+      switch (opt) {
+        case 'P':
+          schd_port = strtoul(optarg, nullptr, 10);
+          break;
+        case 'q':
+          QUOTA = atof(optarg);
+          break;
+        case 'm':
+          MIN_QUOTA = atof(optarg);
+          break;
+        case 'w':
+          WINDOW_SIZE = atof(optarg);
+          break;
+        case 'f':
+          strncpy(limit_file_name, optarg, PATH_MAX - 1);
+          break;
+        case 'p':
+          strncpy(limit_file_dir, optarg, PATH_MAX - 1);
+          break;
+        case 'v':
+          verbosity = atoi(optarg);
+          break;
+        case 'h':
+          printf("usage: %s [options]\n", argv[0]);
+          puts("Options:");
+          puts("    -P [PORT], --port [PORT]");
+          puts("    -q [QUOTA], --quota [QUOTA]");
+          puts("    -m [MIN_QUOTA], --min_quota [MIN_QUOTA]");
+          puts("    -w [WINDOW_SIZE], --window [WINDOW_SIZE]");
+          puts("    -f [LIMIT_FILE], --limit_file [LIMIT_FILE]");
+          puts("    -p [LIMIT_FILE_DIR], --limit_file_dir [LIMIT_FILE_DIR]");
+          puts("    -v [LEVEL], --verbose [LEVEL]");
+          puts("    -h, --help");
+          return 0;
+        default:
+          break;
+      }
     }
-  }
 
-  if (verbosity > 0) {
-    printf("Scheduler settings:\n");
-    printf("    %-20s %.3f ms\n", "default quota:", QUOTA);
-    printf("    %-20s %.3f ms\n", "minimum quota:", MIN_QUOTA);
-    printf("    %-20s %.3f ms\n", "time window:", WINDOW_SIZE);
-  }
+    if (verbosity > 0) {
+      printf("Scheduler settings:\n");
+      printf("    %-20s %.3f ms\n", "default quota:", QUOTA);
+      printf("    %-20s %.3f ms\n", "minimum quota:", MIN_QUOTA);
+      printf("    %-20s %.3f ms\n", "time window:", WINDOW_SIZE);
+    }
 
-  // register signal handler for debugging
-  signal(SIGSEGV, sig_handler);
-#ifdef _DEBUG
-  if (verbosity > 0) signal(SIGINT, dump_history);
-#endif
+    // register signal handler for debugging
+    signal(SIGSEGV, sig_handler);
+  #ifdef _DEBUG
+    if (verbosity > 0) signal(SIGINT, dump_history);
+  #endif
 
-  int rc;
-  int sockfd = 0;
-  // int forClientSockfd = 0;
-  // struct sockaddr_in clientInfo;
-  // int addrlen = sizeof(clientInfo);
+    // int rc;
+    // int sockfd = 0;
+    // // int forClientSockfd = 0;
+    // // struct sockaddr_in clientInfo;
+    // // int addrlen = sizeof(clientInfo);
 
-  sockfd = socket(AF_INET, SOCK_STREAM, 0);
-  if (sockfd == -1) {
-    ERROR("Fail to create a socket!");
-    exit(-1);
-  }
+    // sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    // if (sockfd == -1) {
+    //   ERROR("Fail to create a socket!");
+    //   exit(-1);
+    // }
 
-  struct sockaddr_in serverInfo;
-  bzero(&serverInfo, sizeof(serverInfo));
+    // struct sockaddr_in serverInfo;
+    // bzero(&serverInfo, sizeof(serverInfo));
 
-  serverInfo.sin_family = PF_INET;
-  serverInfo.sin_addr.s_addr = INADDR_ANY;
-  serverInfo.sin_port = htons(schd_port);
-  if (bind(sockfd, (struct sockaddr *)&serverInfo, sizeof(serverInfo)) < 0) {
-    ERROR("cannot bind port");
-    exit(-1);
-  }
-  DEBUG("%d: scheduler port: %ld\n", __LINE__, schd_port);
-  listen(sockfd, SOMAXCONN);
+    // serverInfo.sin_family = PF_INET;
+    // serverInfo.sin_addr.s_addr = INADDR_ANY;
+    // serverInfo.sin_port = htons(schd_port);
+    // if (bind(sockfd, (struct sockaddr *)&serverInfo, sizeof(serverInfo)) < 0) {
+    //   ERROR("cannot bind port");
+    //   exit(-1);
+    // }
+    // DEBUG("%d: scheduler port: %ld\n", __LINE__, schd_port);
+    // listen(sockfd, SOMAXCONN);
 
-  pthread_t tid;
+    // pthread_t tid;
 
 
-  // initialize candidate_cond with CLOCK_MONOTONIC
-  pthread_condattr_t attr_monotonic_clock;
-  pthread_condattr_init(&attr_monotonic_clock);
-  pthread_condattr_setclock(&attr_monotonic_clock, CLOCK_MONOTONIC);
-  pthread_cond_init(&candidate_cond, &attr_monotonic_clock);
+    // // initialize candidate_cond with CLOCK_MONOTONIC
+    // pthread_condattr_t attr_monotonic_clock;
+    // pthread_condattr_init(&attr_monotonic_clock);
+    // pthread_condattr_setclock(&attr_monotonic_clock, CLOCK_MONOTONIC);
+    // pthread_cond_init(&candidate_cond, &attr_monotonic_clock);
 
-  rc = pthread_create(&tid, NULL, schedule_daemon_func, NULL);
-  if (rc != 0) {
-    ERROR("Return code from pthread_create(): %d", rc);
-    exit(rc);
-  }
-  pthread_detach(tid);
+    // rc = pthread_create(&tid, NULL, schedule_daemon_func, NULL);
+    // if (rc != 0) {
+    //   ERROR("Return code from pthread_create(): %d", rc);
+    //   exit(rc);
+    // }
+    // pthread_detach(tid);
+
     char fullpath[PATH_MAX];
     snprintf(fullpath, PATH_MAX, "%s/%s", limit_file_dir, limit_file_name);
     read_resource_config(fullpath);
-    spawnClientGroupThreads(sockfd);
+    // spawnClientGroupThreads(sockfd);
     GFile *f = g_file_new_for_path(fullpath);
     g_assert(f);
 

@@ -103,6 +103,7 @@ std::list<History> history_list;
 #ifdef _DEBUG
 std::list<History> full_history;
 #endif
+GMainLoop *main_loop = nullptr;
 
 // milliseconds since scheduler process started
 inline double ms_since_start() {
@@ -478,6 +479,41 @@ void *pod_client_func(void *args) {
   pthread_exit(NULL);
 }
 
+void *podGroupMgmt(void * sockfd) {
+  struct sockaddr_in clientInfo;
+  int addrlen = sizeof(clientInfo);
+  int forClientSockfd = 0;
+
+  INFO("Waiting for incoming connection");
+
+  while (
+      (forClientSockfd = accept( *(int*) sockfd, (struct sockaddr *)&clientInfo, (socklen_t *)&addrlen))) {
+    INFO("Received an incoming connection.");
+    pthread_t tid;
+    int *pod_sockfd = new int;
+    *pod_sockfd = forClientSockfd;
+    // create a thread to service this Pod manager
+    pthread_create(&tid, NULL, pod_client_func, pod_sockfd);
+    pthread_detach(tid);
+  }
+  if (forClientSockfd < 0) {
+    ERROR("Accept failed");
+  }
+
+  pthread_exit(nullptr);
+}
+
+// Create pod group management threads in detached state.
+void spawnClientGroupThreads(int sockid) {
+    pthread_t tid;
+    int rc = pthread_create(&tid, nullptr, podGroupMgmt, &sockid);
+    if (rc != 0) {
+      ERROR("Failed to create pod group management thread: %s", strerror(rc));
+      exit(rc);
+    }
+    pthread_detach(tid);
+}
+
 int main(int argc, char *argv[]) {
   uint16_t schd_port = 50051;
   // parse command line options
@@ -545,34 +581,11 @@ int main(int argc, char *argv[]) {
   if (verbosity > 0) signal(SIGINT, dump_history);
 #endif
 
-  // read configuration file
-  // read_resource_config();
-
-  // Watch for newcomers (new ClientGroup).
-  char fullpath[PATH_MAX];
-  snprintf(fullpath, PATH_MAX, "%s/%s", limit_file_dir, limit_file_name);
-  read_resource_config(fullpath);
-
-  GError *err = nullptr;
-  GFile *file = g_file_new_for_path(fullpath);
-  if (file == nullptr) {
-    ERROR("Failed to construct GFile for %s", fullpath);
-    exit(EXIT_FAILURE);
-  }
-  GFileMonitor *monitor = g_file_monitor(file, G_FILE_MONITOR_NONE, nullptr, &err);
-  if (monitor == nullptr || err != nullptr) {
-    ERROR("Failed to create monitor for %s: %s", fullpath, err->message);
-    exit(EXIT_FAILURE);
-  }
-  INFO(" Monitor thread created on %s.\n", fullpath);
-
-  g_signal_connect(monitor, "changed", G_CALLBACK(onResourceConfigFileUpdate), nullptr);
-
   int rc;
   int sockfd = 0;
-  int forClientSockfd = 0;
-  struct sockaddr_in clientInfo;
-  int addrlen = sizeof(clientInfo);
+  // int forClientSockfd = 0;
+  // struct sockaddr_in clientInfo;
+  // int addrlen = sizeof(clientInfo);
 
   sockfd = socket(AF_INET, SOCK_STREAM, 0);
   if (sockfd == -1) {
@@ -590,7 +603,7 @@ int main(int argc, char *argv[]) {
     ERROR("cannot bind port");
     exit(-1);
   }
-  DEBUG("scheduler port: %ld\n", schd_port);
+  DEBUG("%d: scheduler port: %ld\n", __LINE__, schd_port);
   listen(sockfd, SOMAXCONN);
 
   pthread_t tid;
@@ -608,23 +621,53 @@ int main(int argc, char *argv[]) {
     exit(rc);
   }
   pthread_detach(tid);
-  INFO("Waiting for incoming connection");
 
-  while (
-      (forClientSockfd = accept(sockfd, (struct sockaddr *)&clientInfo, (socklen_t *)&addrlen))) {
-    INFO("Received an incoming connection.");
-    pthread_t tid;
-    int *pod_sockfd = new int;
-    *pod_sockfd = forClientSockfd;
-    // create a thread to service this Pod manager
-    pthread_create(&tid, NULL, pod_client_func, pod_sockfd);
-    pthread_detach(tid);
+  // read configuration file to setup pods
+  // read_resource_config();
+
+
+  // Watch for newcomers (new ClientGroup).
+  char fullpath[PATH_MAX];
+  snprintf(fullpath, PATH_MAX, "%s/%s", limit_file_dir, limit_file_name);
+  read_resource_config(fullpath);
+  spawnClientGroupThreads(sockfd);
+  // INFO("Waiting for incoming connection");
+
+  // while (
+  //     (forClientSockfd = accept(sockfd, (struct sockaddr *)&clientInfo, (socklen_t *)&addrlen))) {
+  //   INFO("Received an incoming connection.");
+  //   pthread_t tid;
+  //   int *pod_sockfd = new int;
+  //   *pod_sockfd = forClientSockfd;
+  //   // create a thread to service this Pod manager
+  //   pthread_create(&tid, NULL, pod_client_func, pod_sockfd);
+  //   pthread_detach(tid);
+  // }
+  // if (forClientSockfd < 0) {
+  //   ERROR("Accept failed");
+  //   return 1;
+  // }
+  // return 0;
+
+  GError *err = nullptr;
+  GFile *file = g_file_new_for_path(fullpath);
+  if (file == nullptr) {
+    ERROR("Failed to construct GFile for %s", fullpath);
+    exit(EXIT_FAILURE);
   }
-  if (forClientSockfd < 0) {
-    ERROR("Accept failed");
-    return 1;
+  GFileMonitor *monitor = g_file_monitor(file, G_FILE_MONITOR_NONE, nullptr, &err);
+  if (monitor == nullptr || err != nullptr) {
+    ERROR("Failed to create monitor for %s: %s", fullpath, err->message);
+    exit(EXIT_FAILURE);
   }
-  return 0;
+  INFO(" Monitor thread created on %s.\n", fullpath);
+
+  g_signal_connect(monitor, "changed", G_CALLBACK(onResourceConfigFileUpdate), nullptr);
+  // Wait for file change events
+  main_loop = g_main_loop_new(nullptr, false);
+  g_main_loop_run(main_loop);
+
+  g_object_unref(monitor);
 }
 
 void sig_handler(int sig) {

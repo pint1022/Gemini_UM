@@ -668,7 +668,7 @@ int main(int argc, char *argv[])
     //   ERROR("Return code from pthread_create(): %d", rc);
     //   exit(rc);
     // }
-    // pthread_detach(tid);
+    pthread_detach(tid);
 
     char fullpath[PATH_MAX];
     snprintf(fullpath, PATH_MAX, "%s/%s", limit_file_dir, limit_file_name);

@@ -20,6 +20,19 @@
  * and give token to that client. This scheduler act as a daemon, accepting
  * connection and requests from pod manager or hook library directly.
  */
+/*
+ * Demo for g_file_monitor().
+ *
+ * Compile using:
+ * $ CFLAGS=`pkg-config --cflags gio-2.0` LDLIBS=`pkg-config --libs gio-2.0` make g_file_monitor.c
+ *
+ * It is possible to pass either a directory or a file path as argument.
+ */
+// #include <assert.h>
+// #include <stdio.h>
+// #include <unistd.h>
+// #include <glib.h>
+// #include <gio/gio.h>
 
 #include "scheduler.h"
 
@@ -210,19 +223,54 @@ void read_resource_config(char* full_path) {
   fin.close();
 }
 
-// Callback function when resource config file is changed.
-// Monitor the change to resource config file, and spawn new client group management threads if
-// needed.
-void onResourceConfigFileUpdate(GFileMonitor *monitor, GFile *file, GFile *other_file,
-                                GFileMonitorEvent event_type, gpointer user_data) {
+void file_changed_cb(GFileMonitor *monitor, GFile *file, GFile *other, GFileMonitorEvent evtype, gpointer user_data)
+{
+    // char *fpath = g_file_get_path(file);
+    // char *opath = NULL;
+    // if (other) {
+    //     opath = g_file_get_path(other);
+    // }
+    // switch(evtype) {
+    //     case G_FILE_MONITOR_EVENT_CHANGED:
+    //         g_print("%s contents changed\n", fpath);
+    //         break;
+    //     case G_FILE_MONITOR_EVENT_CHANGES_DONE_HINT:
+    //         g_print("%s set of changes done\n\n", fpath);
+    //         break;
+    //     case G_FILE_MONITOR_EVENT_DELETED:
+    //         g_print("%s deleted\n", fpath);
+    //         break;
+    //     case G_FILE_MONITOR_EVENT_CREATED:
+    //         g_print("%s created\n", fpath);
+    //         break;
+    //     case G_FILE_MONITOR_EVENT_ATTRIBUTE_CHANGED:
+    //         g_print("%s attributes changed\n", fpath);
+    //         break;
+    //     case G_FILE_MONITOR_EVENT_RENAMED:
+    //         g_print("%s renamed to %s\n", fpath, opath);
+    //         break;
+    //     case G_FILE_MONITOR_EVENT_MOVED_IN:
+    //         g_print("%s moved to directory\n", fpath);
+    //         break;
+    //     case G_FILE_MONITOR_EVENT_MOVED_OUT:
+    //         g_print("%s moved from directory\n", fpath);
+    //         break;
+    //     default:
+    //         g_print("%s event %x\n", fpath, evtype);
+    //         break;
+    // }
     INFO("resource is changed...");
-  if (event_type == G_FILE_MONITOR_EVENT_CHANGED || event_type == G_FILE_MONITOR_EVENT_CREATED) {
-    INFO("Update resource configurations...");
+    if (evtype == G_FILE_MONITOR_EVENT_CHANGED || evtype == G_FILE_MONITOR_EVENT_CREATED) {
+        INFO("Update resource configurations...");
 
-    char *path = g_file_get_path(file);
-    read_resource_config(path);
-    g_free(path);
-  }
+        char *path = g_file_get_path(file);
+        read_resource_config(path);
+        g_free(path);
+    }    
+    // if (opath) {
+    //     g_free(opath);
+    // }
+    // g_free(fpath);
 }
 
 
@@ -463,7 +511,6 @@ void *schedule_daemon_func(void *) {
     }
   }
 }
-
 // daemon function for Pod manager: waiting for incoming request
 void *pod_client_func(void *args) {
   int pod_sockfd = *((int *)args);
@@ -514,7 +561,8 @@ void spawnClientGroupThreads(int sockid) {
     pthread_detach(tid);
 }
 
-int main(int argc, char *argv[]) {
+int main(int argc, char *argv[])
+{
   uint16_t schd_port = 50051;
   // parse command line options
   const char *optstring = "P:q:m:w:f:p:v:h";
@@ -621,60 +669,33 @@ int main(int argc, char *argv[]) {
     exit(rc);
   }
   pthread_detach(tid);
+    char fullpath[PATH_MAX];
+    snprintf(fullpath, PATH_MAX, "%s/%s", limit_file_dir, limit_file_name);
+    read_resource_config(fullpath);
+    spawnClientGroupThreads(sockfd);
+    GFile *f = g_file_new_for_path(fullpath);
+    g_assert(f);
 
-  // read configuration file to setup pods
-  // read_resource_config();
+    GError *err = NULL;
+    // We use G_FILE_MONITOR_WATCH_MOVES here to get EVENT_RENAMED,
+    // EVENT_MOVED_IN, and EVENT_MOVED_OUT when appropriate.
+    GFileMonitor *fm = g_file_monitor(f, G_FILE_MONITOR_WATCH_MOVES, NULL, &err);
+    if (err) {
+        fprintf(stderr, "unable to monitor %s: %s\n", argv[1], err->message);
+        g_error_free(err);
+        return 1;
+    }
 
+    g_signal_connect(G_OBJECT(fm), "changed", G_CALLBACK(file_changed_cb), NULL);
 
-  // Watch for newcomers (new ClientGroup).
-  char fullpath[PATH_MAX];
-  snprintf(fullpath, PATH_MAX, "%s/%s", limit_file_dir, limit_file_name);
-  read_resource_config(fullpath);
-  spawnClientGroupThreads(sockfd);
-  // INFO("Waiting for incoming connection");
+    char *fpath = g_file_get_path(f);
+    g_print("monitoring %s\n", fpath);
+    g_free(fpath);
+    GMainLoop *ws = g_main_loop_new(NULL, FALSE);
+    g_assert(ws);
+    g_main_loop_run(ws);
 
-  // while (
-  //     (forClientSockfd = accept(sockfd, (struct sockaddr *)&clientInfo, (socklen_t *)&addrlen))) {
-  //   INFO("Received an incoming connection.");
-  //   pthread_t tid;
-  //   int *pod_sockfd = new int;
-  //   *pod_sockfd = forClientSockfd;
-  //   // create a thread to service this Pod manager
-  //   pthread_create(&tid, NULL, pod_client_func, pod_sockfd);
-  //   pthread_detach(tid);
-  // }
-  // if (forClientSockfd < 0) {
-  //   ERROR("Accept failed");
-  //   return 1;
-  // }
-  // return 0;
- // Wait for file change events
-  main_loop = g_main_loop_new(nullptr, false);
-  g_assert(main_loop);
-  
-  GError *err = nullptr;
-  GFile *file = g_file_new_for_path(fullpath);
-  if (file == nullptr) {
-    ERROR("Failed to construct GFile for %s", fullpath);
-    exit(EXIT_FAILURE);
-  }
-  GFileMonitor *monitor = g_file_monitor(file, G_FILE_MONITOR_WATCH_MOVES, nullptr, &err);
-  if (monitor == nullptr || err != nullptr) {
-    ERROR("Failed to create monitor for %s: %s", fullpath, err->message);
-    exit(EXIT_FAILURE);
-  }
-
-  g_signal_connect(monitor, "changed", G_CALLBACK(onResourceConfigFileUpdate), nullptr);
-  char *fpath = g_file_get_path(file);
-  // g_print("monitoring %s\n", fpath);
-  INFO(" Monitor thread created on %s.\n", fullpath);
-  g_free(fpath);
- 
-
-  g_main_loop_run(main_loop);
-
-  g_object_unref(monitor);
-  return 0;
+    return 0;
 }
 
 void sig_handler(int sig) {

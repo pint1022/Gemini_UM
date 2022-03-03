@@ -20,19 +20,6 @@
  * and give token to that client. This scheduler act as a daemon, accepting
  * connection and requests from pod manager or hook library directly.
  */
-/*
- * Demo for g_file_monitor().
- *
- * Compile using:
- * $ CFLAGS=`pkg-config --cflags gio-2.0` LDLIBS=`pkg-config --libs gio-2.0` make g_file_monitor.c
- *
- * It is possible to pass either a directory or a file path as argument.
- */
-// #include <assert.h>
-// #include <stdio.h>
-// #include <unistd.h>
-// #include <glib.h>
-// #include <gio/gio.h>
 
 #include "scheduler.h"
 
@@ -223,54 +210,19 @@ void read_resource_config(char* full_path) {
   fin.close();
 }
 
-void file_changed_cb(GFileMonitor *monitor, GFile *file, GFile *other, GFileMonitorEvent evtype, gpointer user_data)
-{
-    // char *fpath = g_file_get_path(file);
-    // char *opath = NULL;
-    // if (other) {
-    //     opath = g_file_get_path(other);
-    // }
-    // switch(evtype) {
-    //     case G_FILE_MONITOR_EVENT_CHANGED:
-    //         g_print("%s contents changed\n", fpath);
-    //         break;
-    //     case G_FILE_MONITOR_EVENT_CHANGES_DONE_HINT:
-    //         g_print("%s set of changes done\n\n", fpath);
-    //         break;
-    //     case G_FILE_MONITOR_EVENT_DELETED:
-    //         g_print("%s deleted\n", fpath);
-    //         break;
-    //     case G_FILE_MONITOR_EVENT_CREATED:
-    //         g_print("%s created\n", fpath);
-    //         break;
-    //     case G_FILE_MONITOR_EVENT_ATTRIBUTE_CHANGED:
-    //         g_print("%s attributes changed\n", fpath);
-    //         break;
-    //     case G_FILE_MONITOR_EVENT_RENAMED:
-    //         g_print("%s renamed to %s\n", fpath, opath);
-    //         break;
-    //     case G_FILE_MONITOR_EVENT_MOVED_IN:
-    //         g_print("%s moved to directory\n", fpath);
-    //         break;
-    //     case G_FILE_MONITOR_EVENT_MOVED_OUT:
-    //         g_print("%s moved from directory\n", fpath);
-    //         break;
-    //     default:
-    //         g_print("%s event %x\n", fpath, evtype);
-    //         break;
-    // }
+// Callback function when resource config file is changed.
+// Monitor the change to resource config file, and spawn new client group management threads if
+// needed.
+void onResourceConfigFileUpdate(GFileMonitor *monitor, GFile *file, GFile *other_file,
+                                GFileMonitorEvent event_type, gpointer user_data) {
     INFO("resource is changed...");
-    if (evtype == G_FILE_MONITOR_EVENT_CHANGED || evtype == G_FILE_MONITOR_EVENT_CREATED) {
-        INFO("Update resource configurations...");
+  if (event_type == G_FILE_MONITOR_EVENT_CHANGED || event_type == G_FILE_MONITOR_EVENT_CREATED) {
+    INFO("Update resource configurations...");
 
-        char *path = g_file_get_path(file);
-        read_resource_config(path);
-        g_free(path);
-    }    
-    // if (opath) {
-    //     g_free(opath);
-    // }
-    // g_free(fpath);
+    char *path = g_file_get_path(file);
+    read_resource_config(path);
+    g_free(path);
+  }
 }
 
 
@@ -511,6 +463,7 @@ void *schedule_daemon_func(void *) {
     }
   }
 }
+
 // daemon function for Pod manager: waiting for incoming request
 void *pod_client_func(void *args) {
   int pod_sockfd = *((int *)args);
@@ -561,142 +514,167 @@ void spawnClientGroupThreads(int sockid) {
     pthread_detach(tid);
 }
 
-int main(int argc, char *argv[])
-{
-    uint16_t schd_port = 50051;
-    // parse command line options
-    const char *optstring = "P:q:m:w:f:p:v:h";
-    struct option opts[] = {{"port", required_argument, nullptr, 'P'},
-                            {"quota", required_argument, nullptr, 'q'},
-                            {"min_quota", required_argument, nullptr, 'm'},
-                            {"window", required_argument, nullptr, 'w'},
-                            {"limit_file", required_argument, nullptr, 'f'},
-                            {"limit_file_dir", required_argument, nullptr, 'p'},
-                            {"verbose", required_argument, nullptr, 'v'},
-                            {"help", no_argument, nullptr, 'h'},
-                            {nullptr, 0, nullptr, 0}};
-    int opt;
-    while ((opt = getopt_long(argc, argv, optstring, opts, NULL)) != -1) {
-      switch (opt) {
-        case 'P':
-          schd_port = strtoul(optarg, nullptr, 10);
-          break;
-        case 'q':
-          QUOTA = atof(optarg);
-          break;
-        case 'm':
-          MIN_QUOTA = atof(optarg);
-          break;
-        case 'w':
-          WINDOW_SIZE = atof(optarg);
-          break;
-        case 'f':
-          strncpy(limit_file_name, optarg, PATH_MAX - 1);
-          break;
-        case 'p':
-          strncpy(limit_file_dir, optarg, PATH_MAX - 1);
-          break;
-        case 'v':
-          verbosity = atoi(optarg);
-          break;
-        case 'h':
-          printf("usage: %s [options]\n", argv[0]);
-          puts("Options:");
-          puts("    -P [PORT], --port [PORT]");
-          puts("    -q [QUOTA], --quota [QUOTA]");
-          puts("    -m [MIN_QUOTA], --min_quota [MIN_QUOTA]");
-          puts("    -w [WINDOW_SIZE], --window [WINDOW_SIZE]");
-          puts("    -f [LIMIT_FILE], --limit_file [LIMIT_FILE]");
-          puts("    -p [LIMIT_FILE_DIR], --limit_file_dir [LIMIT_FILE_DIR]");
-          puts("    -v [LEVEL], --verbose [LEVEL]");
-          puts("    -h, --help");
-          return 0;
-        default:
-          break;
-      }
+int main(int argc, char *argv[]) {
+  uint16_t schd_port = 50051;
+  // parse command line options
+  const char *optstring = "P:q:m:w:f:p:v:h";
+  struct option opts[] = {{"port", required_argument, nullptr, 'P'},
+                          {"quota", required_argument, nullptr, 'q'},
+                          {"min_quota", required_argument, nullptr, 'm'},
+                          {"window", required_argument, nullptr, 'w'},
+                          {"limit_file", required_argument, nullptr, 'f'},
+                          {"limit_file_dir", required_argument, nullptr, 'p'},
+                          {"verbose", required_argument, nullptr, 'v'},
+                          {"help", no_argument, nullptr, 'h'},
+                          {nullptr, 0, nullptr, 0}};
+  int opt;
+  while ((opt = getopt_long(argc, argv, optstring, opts, NULL)) != -1) {
+    switch (opt) {
+      case 'P':
+        schd_port = strtoul(optarg, nullptr, 10);
+        break;
+      case 'q':
+        QUOTA = atof(optarg);
+        break;
+      case 'm':
+        MIN_QUOTA = atof(optarg);
+        break;
+      case 'w':
+        WINDOW_SIZE = atof(optarg);
+        break;
+      case 'f':
+        strncpy(limit_file_name, optarg, PATH_MAX - 1);
+        break;
+      case 'p':
+        strncpy(limit_file_dir, optarg, PATH_MAX - 1);
+        break;
+      case 'v':
+        verbosity = atoi(optarg);
+        break;
+      case 'h':
+        printf("usage: %s [options]\n", argv[0]);
+        puts("Options:");
+        puts("    -P [PORT], --port [PORT]");
+        puts("    -q [QUOTA], --quota [QUOTA]");
+        puts("    -m [MIN_QUOTA], --min_quota [MIN_QUOTA]");
+        puts("    -w [WINDOW_SIZE], --window [WINDOW_SIZE]");
+        puts("    -f [LIMIT_FILE], --limit_file [LIMIT_FILE]");
+        puts("    -p [LIMIT_FILE_DIR], --limit_file_dir [LIMIT_FILE_DIR]");
+        puts("    -v [LEVEL], --verbose [LEVEL]");
+        puts("    -h, --help");
+        return 0;
+      default:
+        break;
     }
+  }
 
-    if (verbosity > 0) {
-      printf("Scheduler settings:\n");
-      printf("    %-20s %.3f ms\n", "default quota:", QUOTA);
-      printf("    %-20s %.3f ms\n", "minimum quota:", MIN_QUOTA);
-      printf("    %-20s %.3f ms\n", "time window:", WINDOW_SIZE);
-    }
+  if (verbosity > 0) {
+    printf("Scheduler settings:\n");
+    printf("    %-20s %.3f ms\n", "default quota:", QUOTA);
+    printf("    %-20s %.3f ms\n", "minimum quota:", MIN_QUOTA);
+    printf("    %-20s %.3f ms\n", "time window:", WINDOW_SIZE);
+  }
 
-    // register signal handler for debugging
-    signal(SIGSEGV, sig_handler);
-  #ifdef _DEBUG
-    if (verbosity > 0) signal(SIGINT, dump_history);
-  #endif
+  // register signal handler for debugging
+  signal(SIGSEGV, sig_handler);
+#ifdef _DEBUG
+  if (verbosity > 0) signal(SIGINT, dump_history);
+#endif
 
-    int rc;
-    int sockfd = 0;
-    // int forClientSockfd = 0;
-    // struct sockaddr_in clientInfo;
-    // int addrlen = sizeof(clientInfo);
+  int rc;
+  int sockfd = 0;
+  // int forClientSockfd = 0;
+  // struct sockaddr_in clientInfo;
+  // int addrlen = sizeof(clientInfo);
 
-    sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (sockfd == -1) {
-      ERROR("Fail to create a socket!");
-      exit(-1);
-    }
+  sockfd = socket(AF_INET, SOCK_STREAM, 0);
+  if (sockfd == -1) {
+    ERROR("Fail to create a socket!");
+    exit(-1);
+  }
 
-    struct sockaddr_in serverInfo;
-    bzero(&serverInfo, sizeof(serverInfo));
+  struct sockaddr_in serverInfo;
+  bzero(&serverInfo, sizeof(serverInfo));
 
-    serverInfo.sin_family = PF_INET;
-    serverInfo.sin_addr.s_addr = INADDR_ANY;
-    serverInfo.sin_port = htons(schd_port);
-    if (bind(sockfd, (struct sockaddr *)&serverInfo, sizeof(serverInfo)) < 0) {
-      ERROR("cannot bind port");
-      exit(-1);
-    }
-    DEBUG("%d: scheduler port: %ld\n", __LINE__, schd_port);
-    listen(sockfd, SOMAXCONN);
+  serverInfo.sin_family = PF_INET;
+  serverInfo.sin_addr.s_addr = INADDR_ANY;
+  serverInfo.sin_port = htons(schd_port);
+  if (bind(sockfd, (struct sockaddr *)&serverInfo, sizeof(serverInfo)) < 0) {
+    ERROR("cannot bind port");
+    exit(-1);
+  }
+  DEBUG("%d: scheduler port: %ld\n", __LINE__, schd_port);
+  listen(sockfd, SOMAXCONN);
 
-    pthread_t tid;
+  pthread_t tid;
 
 
-    // initialize candidate_cond with CLOCK_MONOTONIC
-    pthread_condattr_t attr_monotonic_clock;
-    pthread_condattr_init(&attr_monotonic_clock);
-    pthread_condattr_setclock(&attr_monotonic_clock, CLOCK_MONOTONIC);
-    pthread_cond_init(&candidate_cond, &attr_monotonic_clock);
+  // initialize candidate_cond with CLOCK_MONOTONIC
+  pthread_condattr_t attr_monotonic_clock;
+  pthread_condattr_init(&attr_monotonic_clock);
+  pthread_condattr_setclock(&attr_monotonic_clock, CLOCK_MONOTONIC);
+  pthread_cond_init(&candidate_cond, &attr_monotonic_clock);
 
-    rc = pthread_create(&tid, NULL, schedule_daemon_func, NULL);
-    if (rc != 0) {
-      ERROR("Return code from pthread_create(): %d", rc);
-      exit(rc);
-    }
-    pthread_detach(tid);
-    
-    char fullpath[PATH_MAX];
-    snprintf(fullpath, PATH_MAX, "%s/%s", limit_file_dir, limit_file_name);
-    read_resource_config(fullpath);
-    spawnClientGroupThreads(sockfd);
-    GFile *f = g_file_new_for_path(fullpath);
-    g_assert(f);
+  rc = pthread_create(&tid, NULL, schedule_daemon_func, NULL);
+  if (rc != 0) {
+    ERROR("Return code from pthread_create(): %d", rc);
+    exit(rc);
+  }
+  pthread_detach(tid);
 
-    GError *err = NULL;
-    // We use G_FILE_MONITOR_WATCH_MOVES here to get EVENT_RENAMED,
-    // EVENT_MOVED_IN, and EVENT_MOVED_OUT when appropriate.
-    GFileMonitor *fm = g_file_monitor(f, G_FILE_MONITOR_WATCH_MOVES, NULL, &err);
-    if (err) {
-        fprintf(stderr, "unable to monitor %s: %s\n", argv[1], err->message);
-        g_error_free(err);
-        return 1;
-    }
+  // read configuration file to setup pods
+  // read_resource_config();
 
-    g_signal_connect(G_OBJECT(fm), "changed", G_CALLBACK(file_changed_cb), NULL);
 
-    char *fpath = g_file_get_path(f);
-    g_print("monitoring %s\n", fpath);
-    g_free(fpath);
-    GMainLoop *ws = g_main_loop_new(NULL, FALSE);
-    g_assert(ws);
-    g_main_loop_run(ws);
+  // Watch for newcomers (new ClientGroup).
+  char fullpath[PATH_MAX];
+  snprintf(fullpath, PATH_MAX, "%s/%s", limit_file_dir, limit_file_name);
+  read_resource_config(fullpath);
+  spawnClientGroupThreads(sockfd);
+  // INFO("Waiting for incoming connection");
 
-    return 0;
+  // while (
+  //     (forClientSockfd = accept(sockfd, (struct sockaddr *)&clientInfo, (socklen_t *)&addrlen))) {
+  //   INFO("Received an incoming connection.");
+  //   pthread_t tid;
+  //   int *pod_sockfd = new int;
+  //   *pod_sockfd = forClientSockfd;
+  //   // create a thread to service this Pod manager
+  //   pthread_create(&tid, NULL, pod_client_func, pod_sockfd);
+  //   pthread_detach(tid);
+  // }
+  // if (forClientSockfd < 0) {
+  //   ERROR("Accept failed");
+  //   return 1;
+  // }
+  // return 0;
+ // Wait for file change events
+  main_loop = g_main_loop_new(nullptr, false);
+  g_assert(main_loop);
+
+  GError *err = nullptr;
+  GFile *file = g_file_new_for_path(fullpath);
+  if (file == nullptr) {
+    ERROR("Failed to construct GFile for %s", fullpath);
+    exit(EXIT_FAILURE);
+  }
+  GFileMonitor *monitor = g_file_monitor(file, G_FILE_MONITOR_WATCH_MOVES, nullptr, &err);
+  if (monitor == nullptr || err != nullptr) {
+    ERROR("Failed to create monitor for %s: %s", fullpath, err->message);
+    exit(EXIT_FAILURE);
+  }
+
+  g_signal_connect(monitor, "changed", G_CALLBACK(onResourceConfigFileUpdate), nullptr);
+  char *fpath = g_file_get_path(file);
+  // g_print("monitoring %s\n", fpath);
+  INFO("Monitor thread created on %s.\n", fullpath);
+  g_free(fpath);
+ 
+
+  g_main_loop_run(main_loop);
+
+  g_object_unref(monitor);
+  return 0;
 }
 
 void sig_handler(int sig) {

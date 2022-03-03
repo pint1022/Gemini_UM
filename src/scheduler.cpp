@@ -214,6 +214,7 @@ void read_resource_config(char* full_path) {
 // needed.
 void onResourceConfigFileUpdate(GFileMonitor *monitor, GFile *file, GFile *other_file,
                                 GFileMonitorEvent event_type, gpointer user_data) {
+    INFO("resource is changed...");
   if (event_type == G_FILE_MONITOR_EVENT_CHANGED || event_type == G_FILE_MONITOR_EVENT_CREATED) {
     INFO("Update resource configurations...");
 

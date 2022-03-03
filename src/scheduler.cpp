@@ -660,9 +660,12 @@ int main(int argc, char *argv[]) {
     ERROR("Failed to create monitor for %s: %s", fullpath, err->message);
     exit(EXIT_FAILURE);
   }
-  INFO(" Monitor thread created on %s.\n", fullpath);
 
   g_signal_connect(monitor, "changed", G_CALLBACK(onResourceConfigFileUpdate), nullptr);
+  char *fpath = g_file_get_path(file);
+  // g_print("monitoring %s\n", fpath);
+  INFO(" Monitor thread created on %s.\n", fullpath);
+  g_free(fpath);
   // Wait for file change events
   main_loop = g_main_loop_new(nullptr, false);
   g_assert(main_loop);

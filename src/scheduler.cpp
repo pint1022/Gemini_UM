@@ -197,6 +197,7 @@ void read_resource_config(char* full_path) {
   INFO("There are %d clients in the system...", container_num);
   for (int i = 0; i < container_num; i++) {
     fin >> client_name >> gpu_min_fraction >> gpu_max_fraction >> gpu_memory_size;
+  INFO("%d: %s, %.2f", __LINE__, client_name, gpu_min_fraction);
     client_inf = new ClientInfo(QUOTA, MIN_QUOTA, gpu_max_fraction * WINDOW_SIZE, gpu_min_fraction,
                                 gpu_max_fraction);
     client_inf->name = client_name;
@@ -215,7 +216,6 @@ void read_resource_config(char* full_path) {
 // needed.
 void onResourceConfigFileUpdate(GFileMonitor *monitor, GFile *file, GFile *other_file,
                                 GFileMonitorEvent event_type, gpointer user_data) {
-    INFO("resource is changed...");
   if (event_type == G_FILE_MONITOR_EVENT_CHANGED || event_type == G_FILE_MONITOR_EVENT_CREATED) {
     INFO("Update resource configurations...");
 

@@ -91,6 +91,7 @@ struct timespec get_timespec_after(double ms) {
 double QUOTA = 250.0;
 double MIN_QUOTA = 100.0;
 double WINDOW_SIZE = 10000.0;
+int SAMPLING_RATE = 1000;
 int verbosity = 0;
 
 #define EVENT_SIZE sizeof(struct inotify_event)
@@ -506,13 +507,14 @@ void *podGroupMgmt(void * sockfd) {
 int main(int argc, char *argv[]) {
   uint16_t schd_port = 50051;
   // parse command line options
-  const char *optstring = "P:q:m:w:f:p:v:h";
+  const char *optstring = "P:q:m:w:f:p:v:h:s";
   struct option opts[] = {{"port", required_argument, nullptr, 'P'},
                           {"quota", required_argument, nullptr, 'q'},
                           {"min_quota", required_argument, nullptr, 'm'},
                           {"window", required_argument, nullptr, 'w'},
                           {"limit_file", required_argument, nullptr, 'f'},
                           {"limit_file_dir", required_argument, nullptr, 'p'},
+                          {"sampling_rate", required_argument, nullptr, 's'},
                           {"verbose", required_argument, nullptr, 'v'},
                           {"help", no_argument, nullptr, 'h'},
                           {nullptr, 0, nullptr, 0}};
@@ -530,6 +532,9 @@ int main(int argc, char *argv[]) {
         break;
       case 'w':
         WINDOW_SIZE = atof(optarg);
+        break;
+      case 'w':
+        SAMPLING_RATE = atof(optarg);
         break;
       case 'f':
         strncpy(limit_file_name, optarg, PATH_MAX - 1);
@@ -549,6 +554,7 @@ int main(int argc, char *argv[]) {
         puts("    -w [WINDOW_SIZE], --window [WINDOW_SIZE]");
         puts("    -f [LIMIT_FILE], --limit_file [LIMIT_FILE]");
         puts("    -p [LIMIT_FILE_DIR], --limit_file_dir [LIMIT_FILE_DIR]");
+        puts("    -s [SAMPLING_RATE], --sampling_rate [SAMPLING_RATE]");
         puts("    -v [LEVEL], --verbose [LEVEL]");
         puts("    -h, --help");
         return 0;
@@ -562,6 +568,7 @@ int main(int argc, char *argv[]) {
     printf("    %-20s %.3f ms\n", "default quota:", QUOTA);
     printf("    %-20s %.3f ms\n", "minimum quota:", MIN_QUOTA);
     printf("    %-20s %.3f ms\n", "time window:", WINDOW_SIZE);
+    printf("    %d ms\n", "sampling rate:", SAMPLING_RATE);
   }
 
   // register signal handler for debugging

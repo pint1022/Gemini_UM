@@ -22,13 +22,14 @@ import shlex
 import signal
 
 
-def prepare_env(idx, name, ip, port, schd_port):
+def prepare_env(idx, name, ip, port, schd_port, sampling):
     client_env = os.environ.copy()
     client_env['SCHEDULER_IP'] = ip
     client_env['SCHEDULER_PORT'] = str(schd_port)
     client_env['POD_MANAGER_IP'] = ip
     client_env['POD_MANAGER_PORT'] = str(port)
     client_env['POD_NAME'] = name
+    client_env['SAMPLING_RATE'] = sampling
     return client_env
 
 
@@ -37,8 +38,8 @@ def launch_scheduler(args):
     if cfg_h == '':
         cfg_h = os.getcwd()
 
-    cmd = "{} -p {} -f {} -P {} -q {} -m {} -w {}".format(
-        args.schd, cfg_h, cfg_t, args.port, args.base_quota, args.min_quota, args.window
+    cmd = "{} -p {} -f {} -P {} -q {} -m {} -w {} -s {}".format(
+        args.schd, cfg_h, cfg_t, args.port, args.base_quota, args.min_quota, args.window, args.sampling
     )
     proc = sp.Popen(shlex.split(cmd), universal_newlines=True, bufsize=1)
     return proc
@@ -54,6 +55,7 @@ def main():
     parser.add_argument('--base_quota', type=float, default=300, help='base quota (ms)')
     parser.add_argument('--min_quota', type=float, default=20, help='minimum quota (ms)')
     parser.add_argument('--window', type=float, default=10000, help='time window (ms)')
+    parser.add_argument('--sampling', type=float, default=1000, help='sampling rate (ms)')
     args = parser.parse_args()
 
     with open(args.config) as f:

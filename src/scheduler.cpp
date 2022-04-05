@@ -69,6 +69,7 @@ using std::chrono::steady_clock;
 
 // signal handler
 void sig_handler(int);
+void upload_sampling();
 #ifdef _DEBUG
 void dump_history(int);
 #endif
@@ -91,7 +92,9 @@ struct timespec get_timespec_after(double ms) {
 double QUOTA = 250.0;
 double MIN_QUOTA = 100.0;
 double WINDOW_SIZE = 10000.0;
+bool isSampling = true;
 int SAMPLING_RATE = 1000;
+bool InSampling = true;
 int verbosity = 0;
 
 #define EVENT_SIZE sizeof(struct inotify_event)
@@ -101,6 +104,7 @@ char limit_file_name[PATH_MAX] = "resource-config.txt";
 char limit_file_dir[PATH_MAX] = ".";
 
 std::list<History> history_list;
+std::list<Sample> sample_list;
 #ifdef _DEBUG
 std::list<History> full_history;
 #endif
@@ -155,6 +159,25 @@ void ClientInfo::Record(double quota) {
 #endif
 }
 
+void ClientInfo::Sampling() {
+  Sample a_sample;
+
+  for (auto it = history_list.rbegin(); it != history_list.rend(); it++) {
+    if (it->name == name) {
+      // client may not use up all of the allocated time
+      a_sample.ts = std::chrono::system_clock::now();
+      a_sample.quota = quota_;
+      a_sample.name = name;
+      a_sample.start = it->start;
+      a_sample.end = it->end;
+      a_sample.burst = >burst_;
+      a_sample.overuse = latest_actual_usage_;
+      break;
+    }
+  }
+  // a_sample.quota = overuse;
+  sample_list.push_back(a_sample);
+}
 double ClientInfo::get_min_fraction() { return MIN_FRAC; }
 
 double ClientInfo::get_max_fraction() { return MAX_FRAC; }
@@ -385,6 +408,7 @@ void handle_message(int client_sock, char *message) {
 
     client_inf->update_return_time(overuse);
     client_inf->set_burst(burst);
+    // client_inf->Sample( burst, overuse);
     pthread_mutex_lock(&candidate_mutex);
     candidates.push_back({client_sock, string(client_name), req_id, ms_since_start()});
     pthread_cond_signal(&candidate_cond);  // wake schedule_daemon_func up
@@ -465,6 +489,17 @@ void *schedule_daemon_func(void *) {
   }
 }
 
+// A background thread to record the profiling data
+void *sampling_thread(void *) {
+  const int kHeartbeatIntv = SAMPLING_RATE;
+  while (true) {
+    if (InSampling)
+      upload_sampling();
+    sleep(kHeartbeatIntv);
+  }
+  pthread_exit(nullptr);
+}
+
 // daemon function for Pod manager: waiting for incoming request
 void *pod_client_func(void *args) {
   int pod_sockfd = *((int *)args);
@@ -533,7 +568,7 @@ int main(int argc, char *argv[]) {
       case 'w':
         WINDOW_SIZE = atof(optarg);
         break;
-      case 'w':
+      case 's':
         SAMPLING_RATE = atof(optarg);
         break;
       case 'f':
@@ -622,6 +657,9 @@ int main(int argc, char *argv[]) {
   // read configuration file to setup pods
   // read_resource_config();
 
+  // start sampling thread
+  pthread_create(&tid, nullptr, sampling_thread, nullptr);
+  pthread_detach(tid);
 
   // Watch for newcomers (new ClientGroup).
   char fullpath[PATH_MAX];
@@ -688,6 +726,29 @@ void sig_handler(int sig) {
   ERROR("Received signal %d", sig);
   backtrace_symbols_fd(arr, s, STDERR_FILENO);
   exit(sig);
+}
+
+void upload_sampling() {
+  char fullpath[PATH_MAX];
+  char filename[20];  
+  sprintf(filename, "sampling.json");
+  snprintf(fullpath, PATH_MAX, "%s/d_%s/%s", limit_file_dir, limit_file_name, filename);
+
+  FILE *f = fopen(fullpath, "a");
+  fputs("[\n", f);
+  for (auto it = sampling_list.begin(); it != sampling_list.end(); it++) {
+    fprintf(f, "\t{\"ts\": \"%\"container\": \"%s\", \"start\": %.3lf, \"end\" : %.3lf}",it->ts, it->name.c_str(),
+            it->start / 1000.0, it->end / 1000.0);
+    if (std::next(it) == sampling_list.end())
+      fprintf(f, "\n");
+    else
+      fprintf(f, ",\n");
+  }
+  fputs("]\n", f);
+  fclose(f);
+
+  INFO("sample appended to %s", fullpath);
+  exit(0);
 }
 
 #ifdef _DEBUG

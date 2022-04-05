@@ -29,6 +29,16 @@ struct History {
   double end;
 };
 
+struct Sample {
+  std::time ts;
+  std::string name;
+  double start;
+  double end;
+  int burst_size;
+  int quota;
+  int overuse;
+};
+
 // some bias used for self-adaptive quota calculation
 const double EXTRA_QUOTA = 10.0;
 const double SCHD_OVERHEAD = 2.0;
@@ -40,6 +50,7 @@ class ClientInfo {
   void set_burst(double burst);
   void update_return_time(double overuse);
   void Record(double quota);
+  void Sampling();
   double get_min_fraction();
   double get_max_fraction();
   double get_quota();

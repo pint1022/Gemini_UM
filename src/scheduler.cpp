@@ -69,7 +69,6 @@ using std::chrono::steady_clock;
 
 // signal handler
 void sig_handler(int);
-void upload_sampling();
 #ifdef _DEBUG
 void dump_history(int);
 #endif
@@ -93,9 +92,16 @@ double QUOTA = 250.0;
 double MIN_QUOTA = 100.0;
 double WINDOW_SIZE = 10000.0;
 bool isSampling = true;
-int SAMPLING_RATE = 1000;
-bool InSampling = true;
 int verbosity = 0;
+
+//
+// PRF: profiling 
+//
+int SAMPLING_RATE = 1000;
+int STORE_FACT = 5;
+bool InSampling = true;
+std::list<Sample> sample_list;
+void upload_sampling();
 
 #define EVENT_SIZE sizeof(struct inotify_event)
 #define BUF_LEN (1024 * (EVENT_SIZE + 16))
@@ -104,7 +110,6 @@ char limit_file_name[PATH_MAX] = "resource-config.txt";
 char limit_file_dir[PATH_MAX] = ".";
 
 std::list<History> history_list;
-std::list<Sample> sample_list;
 #ifdef _DEBUG
 std::list<History> full_history;
 #endif
@@ -158,26 +163,6 @@ void ClientInfo::Record(double quota) {
   full_history.push_back(hist);
 #endif
 }
-
-void ClientInfo::Sampling() {
-  Sample a_sample;
-
-  for (auto it = history_list.rbegin(); it != history_list.rend(); it++) {
-    if (it->name == name) {
-      // client may not use up all of the allocated time
-      a_sample.ts = std::chrono::system_clock::now();
-      a_sample.quota = quota_;
-      a_sample.name = name;
-      a_sample.start = it->start;
-      a_sample.end = it->end;
-      a_sample.burst = >burst_;
-      a_sample.overuse = latest_actual_usage_;
-      break;
-    }
-  }
-  // a_sample.quota = overuse;
-  sample_list.push_back(a_sample);
-}
 double ClientInfo::get_min_fraction() { return MIN_FRAC; }
 
 double ClientInfo::get_max_fraction() { return MAX_FRAC; }
@@ -188,6 +173,14 @@ double ClientInfo::get_quota() {
   quota_ = BASE_QUOTA;
   printf("%s:static quota, assign quota: %.3fms\n", name.c_str(), quota_);
   return quota_;
+}
+
+double ClientInfo::get_overuse() {  
+  return latest_overuse_;
+}
+
+double ClientInfo::get_burst() {  
+  return burst_;
 }
 
 // map container name to object
@@ -489,13 +482,36 @@ void *schedule_daemon_func(void *) {
   }
 }
 
+void Sampling() {
+  Sample a_sample;
+  
+  for (auto it = history_list.rbegin(); it != history_list.rend(); it++) {
+      // client may not use up all of the allocated time
+      a_sample.tp = std::chrono::system_clock::now();
+      a_sample.name = it->name;
+      a_sample.quota = client_info_map[it->name]->get_quota();
+      a_sample.start = it->start;
+      a_sample.end = it->end;
+      a_sample.burst = client_info_map[it->name]->get_burst();
+      a_sample.overuse = client_info_map[it->name]->get_overuse();
+      sample_list.push_back(a_sample);
+    }
+}
+
+//
 // A background thread to record the profiling data
+//
 void *sampling_thread(void *) {
   const int kHeartbeatIntv = SAMPLING_RATE;
+  int save_data = STORE_FACT;
   while (true) {
     if (InSampling)
-      upload_sampling();
+      Sampling();
     sleep(kHeartbeatIntv);
+    if (save_data-- == 0) {
+      upload_sampling();
+      save_data = SAMPLING_RATE;
+    }
   }
   pthread_exit(nullptr);
 }
@@ -603,7 +619,7 @@ int main(int argc, char *argv[]) {
     printf("    %-20s %.3f ms\n", "default quota:", QUOTA);
     printf("    %-20s %.3f ms\n", "minimum quota:", MIN_QUOTA);
     printf("    %-20s %.3f ms\n", "time window:", WINDOW_SIZE);
-    printf("    %d ms\n", "sampling rate:", SAMPLING_RATE);
+    printf("    %-20s %d ms\n", "sampling rate:", SAMPLING_RATE);
   }
 
   // register signal handler for debugging
@@ -736,10 +752,10 @@ void upload_sampling() {
 
   FILE *f = fopen(fullpath, "a");
   fputs("[\n", f);
-  for (auto it = sampling_list.begin(); it != sampling_list.end(); it++) {
-    fprintf(f, "\t{\"ts\": \"%\"container\": \"%s\", \"start\": %.3lf, \"end\" : %.3lf}",it->ts, it->name.c_str(),
+  for (auto it = sample_list.begin(); it != sample_list.end(); it++) {
+    fprintf(f, "\t{\"ts\": \"%\"container\": \"%s\", \"start\": %.3lf, \"end\" : %.3lf}",std::chrono::system_clock::to_time_t(it->tp), it->name.c_str(),
             it->start / 1000.0, it->end / 1000.0);
-    if (std::next(it) == sampling_list.end())
+    if (std::next(it) == sample_list.end())
       fprintf(f, "\n");
     else
       fprintf(f, ",\n");

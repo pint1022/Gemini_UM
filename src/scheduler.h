@@ -20,6 +20,7 @@
 #include <list>
 #include <map>
 #include <string>
+#include <chrono>
 
 #include "comm.h"
 
@@ -29,19 +30,10 @@ struct History {
   double end;
 };
 
-struct Sample {
-  std::time ts;
-  std::string name;
-  double start;
-  double end;
-  int burst_size;
-  int quota;
-  int overuse;
-};
-
 // some bias used for self-adaptive quota calculation
 const double EXTRA_QUOTA = 10.0;
 const double SCHD_OVERHEAD = 2.0;
+
 
 class ClientInfo {
  public:
@@ -50,10 +42,11 @@ class ClientInfo {
   void set_burst(double burst);
   void update_return_time(double overuse);
   void Record(double quota);
-  void Sampling();
   double get_min_fraction();
   double get_max_fraction();
   double get_quota();
+  double get_overuse();
+  double get_burst();
   std::map<unsigned long long, size_t> memory_map;
   std::string name;
   size_t gpu_mem_limit;
@@ -87,5 +80,20 @@ struct valid_candidate_t {
 };
 
 bool schd_priority(const valid_candidate_t &a, const valid_candidate_t &b);
+
+
+//
+// PRF: profiling 
+//
+struct Sample {
+  std::chrono::time_point<std::chrono::steady_clock> tp;
+  std::string name;
+  double start;
+  double end;
+  int burst;
+  int quota;
+  int overuse;
+};
+void Sampling();
 
 #endif

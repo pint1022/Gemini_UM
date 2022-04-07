@@ -86,7 +86,7 @@ bool schd_priority(const valid_candidate_t &a, const valid_candidate_t &b);
 // PRF: profiling 
 //
 struct Sample {
-  std::chrono::time_point<std::chrono::steady_clock> tp;
+  uint64_t  ts;
   std::string name;
   double start;
   double end;

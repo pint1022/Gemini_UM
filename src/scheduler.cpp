@@ -487,7 +487,7 @@ void Sampling() {
   
   for (auto it = history_list.rbegin(); it != history_list.rend(); it++) {
       // client may not use up all of the allocated time
-      a_sample.tp = std::chrono::system_clock::now();
+      a_sample.ts = duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
       a_sample.name = it->name;
       a_sample.quota = client_info_map[it->name]->get_quota();
       a_sample.start = it->start;
@@ -753,7 +753,7 @@ void upload_sampling() {
   FILE *f = fopen(fullpath, "a");
   fputs("[\n", f);
   for (auto it = sample_list.begin(); it != sample_list.end(); it++) {
-    fprintf(f, "\t{\"ts\": \"%\"container\": \"%s\", \"start\": %.3lf, \"end\" : %.3lf}",std::chrono::system_clock::to_time_t(it->tp), it->name.c_str(),
+    fprintf(f, "\t{\"ts\": \"%jd\"container\": \"%s\", \"start\": %.3lf, \"end\" : %.3lf}",it->ts, it->name.c_str(),
             it->start / 1000.0, it->end / 1000.0);
     if (std::next(it) == sample_list.end())
       fprintf(f, "\n");
@@ -775,7 +775,7 @@ void dump_history(int sig) {
   FILE *f = fopen(filename, "w");
   fputs("[\n", f);
   for (auto it = full_history.begin(); it != full_history.end(); it++) {
-    fprintf(f, "\t{\"container\": \"%s\", \"start\": %.3lf, \"end\" : %.3lf}", it->name.c_str(),
+    fprintf(f, "\t{\"container\": \"%ul\", \"start\": %.3lf, \"end\" : %.3lf}", it->name.c_str(),
             it->start / 1000.0, it->end / 1000.0);
     if (std::next(it) == full_history.end())
       fprintf(f, "\n");

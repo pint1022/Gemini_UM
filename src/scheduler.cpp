@@ -674,8 +674,8 @@ int main(int argc, char *argv[]) {
   // read_resource_config();
 
   // start sampling thread
-  // pthread_create(&tid, nullptr, sampling_thread, nullptr);
-  // pthread_detach(tid);
+  pthread_create(&tid, nullptr, sampling_thread, nullptr);
+  pthread_detach(tid);
 
   // Watch for newcomers (new ClientGroup).
   char fullpath[PATH_MAX];

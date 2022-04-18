@@ -482,39 +482,39 @@ void *schedule_daemon_func(void *) {
   }
 }
 
-// void Sampling() {
-//   Sample a_sample;
+void Sampling() {
+  Sample a_sample;
   
-//   for (auto it = history_list.rbegin(); it != history_list.rend(); it++) {
-//       // client may not use up all of the allocated time
-//       a_sample.ts = duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-//       a_sample.name = it->name;
-//       a_sample.quota = client_info_map[it->name]->get_quota();
-//       a_sample.start = it->start;
-//       a_sample.end = it->end;
-//       a_sample.burst = client_info_map[it->name]->get_burst();
-//       a_sample.overuse = client_info_map[it->name]->get_overuse();
-//       sample_list.push_back(a_sample);
-//     }
-// }
+  for (auto it = history_list.rbegin(); it != history_list.rend(); it++) {
+      // client may not use up all of the allocated time
+      a_sample.ts = duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+      a_sample.name = it->name;
+      a_sample.quota = client_info_map[it->name]->get_quota();
+      a_sample.start = it->start;
+      a_sample.end = it->end;
+      a_sample.burst = client_info_map[it->name]->get_burst();
+      a_sample.overuse = client_info_map[it->name]->get_overuse();
+      sample_list.push_back(a_sample);
+    }
+}
 
-// //
-// // A background thread to record the profiling data
-// //
-// void *sampling_thread(void *) {
-//   const int kHeartbeatIntv = SAMPLING_RATE;
-//   int save_data = STORE_FACT;
-//   while (true) {
-//     if (InSampling)
-//       Sampling();
-//     sleep(kHeartbeatIntv);
-//     if (save_data-- == 0) {
-//       upload_sampling();
-//       save_data = SAMPLING_RATE;
-//     }
-//   }
-//   pthread_exit(nullptr);
-// }
+//
+// A background thread to record the profiling data
+//
+void *sampling_thread(void *) {
+  const int kHeartbeatIntv = SAMPLING_RATE;
+  int save_data = STORE_FACT;
+  while (true) {
+    if (InSampling)
+      Sampling();
+    sleep(kHeartbeatIntv);
+    if (save_data-- == 0) {
+      upload_sampling();
+      save_data = SAMPLING_RATE;
+    }
+  }
+  pthread_exit(nullptr);
+}
 
 // daemon function for Pod manager: waiting for incoming request
 void *pod_client_func(void *args) {
@@ -689,23 +689,7 @@ int main(int argc, char *argv[]) {
   }
   pthread_detach(tid);
   
-  // INFO("Waiting for incoming connection");
 
-  // while (
-  //     (forClientSockfd = accept(sockfd, (struct sockaddr *)&clientInfo, (socklen_t *)&addrlen))) {
-  //   INFO("Received an incoming connection.");
-  //   pthread_t tid;
-  //   int *pod_sockfd = new int;
-  //   *pod_sockfd = forClientSockfd;
-  //   // create a thread to service this Pod manager
-  //   pthread_create(&tid, NULL, pod_client_func, pod_sockfd);
-  //   pthread_detach(tid);
-  // }
-  // if (forClientSockfd < 0) {
-  //   ERROR("Accept failed");
-  //   return 1;
-  // }
-  // return 0;
  // Wait for file change events
   main_loop = g_main_loop_new(nullptr, false);
   g_assert(main_loop);

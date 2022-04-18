@@ -482,39 +482,39 @@ void *schedule_daemon_func(void *) {
   }
 }
 
-void Sampling() {
-  Sample a_sample;
+// void Sampling() {
+//   Sample a_sample;
   
-  for (auto it = history_list.rbegin(); it != history_list.rend(); it++) {
-      // client may not use up all of the allocated time
-      a_sample.ts = duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-      a_sample.name = it->name;
-      a_sample.quota = client_info_map[it->name]->get_quota();
-      a_sample.start = it->start;
-      a_sample.end = it->end;
-      a_sample.burst = client_info_map[it->name]->get_burst();
-      a_sample.overuse = client_info_map[it->name]->get_overuse();
-      sample_list.push_back(a_sample);
-    }
-}
+//   for (auto it = history_list.rbegin(); it != history_list.rend(); it++) {
+//       // client may not use up all of the allocated time
+//       a_sample.ts = duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+//       a_sample.name = it->name;
+//       a_sample.quota = client_info_map[it->name]->get_quota();
+//       a_sample.start = it->start;
+//       a_sample.end = it->end;
+//       a_sample.burst = client_info_map[it->name]->get_burst();
+//       a_sample.overuse = client_info_map[it->name]->get_overuse();
+//       sample_list.push_back(a_sample);
+//     }
+// }
 
-//
-// A background thread to record the profiling data
-//
-void *sampling_thread(void *) {
-  const int kHeartbeatIntv = SAMPLING_RATE;
-  int save_data = STORE_FACT;
-  while (true) {
-    if (InSampling)
-      Sampling();
-    sleep(kHeartbeatIntv);
-    if (save_data-- == 0) {
-      upload_sampling();
-      save_data = SAMPLING_RATE;
-    }
-  }
-  pthread_exit(nullptr);
-}
+// //
+// // A background thread to record the profiling data
+// //
+// void *sampling_thread(void *) {
+//   const int kHeartbeatIntv = SAMPLING_RATE;
+//   int save_data = STORE_FACT;
+//   while (true) {
+//     if (InSampling)
+//       Sampling();
+//     sleep(kHeartbeatIntv);
+//     if (save_data-- == 0) {
+//       upload_sampling();
+//       save_data = SAMPLING_RATE;
+//     }
+//   }
+//   pthread_exit(nullptr);
+// }
 
 // daemon function for Pod manager: waiting for incoming request
 void *pod_client_func(void *args) {
@@ -558,7 +558,7 @@ void *podGroupMgmt(void * sockfd) {
 int main(int argc, char *argv[]) {
   uint16_t schd_port = 50051;
   // parse command line options
-  const char *optstring = "P:q:m:w:f:p:v:h:s";
+  const char *optstring = "P:q:m:w:f:p:s:v:h";
   struct option opts[] = {{"port", required_argument, nullptr, 'P'},
                           {"quota", required_argument, nullptr, 'q'},
                           {"min_quota", required_argument, nullptr, 'm'},
@@ -674,8 +674,8 @@ int main(int argc, char *argv[]) {
   // read_resource_config();
 
   // start sampling thread
-  pthread_create(&tid, nullptr, sampling_thread, nullptr);
-  pthread_detach(tid);
+  // pthread_create(&tid, nullptr, sampling_thread, nullptr);
+  // pthread_detach(tid);
 
   // Watch for newcomers (new ClientGroup).
   char fullpath[PATH_MAX];
@@ -725,7 +725,7 @@ int main(int argc, char *argv[]) {
   g_signal_connect(monitor, "changed", G_CALLBACK(onResourceConfigFileUpdate), nullptr);
   char *fpath = g_file_get_path(file);
   // g_print("monitoring %s\n", fpath);
-  INFO("Monitor thread created on %s.\n", fullpath);
+  INFO("New Monitor thread created on %s.\n", fullpath);
   g_free(fpath);
  
 
@@ -775,7 +775,7 @@ void dump_history(int sig) {
   FILE *f = fopen(filename, "w");
   fputs("[\n", f);
   for (auto it = full_history.begin(); it != full_history.end(); it++) {
-    fprintf(f, "\t{\"container\": \"%ul\", \"start\": %.3lf, \"end\" : %.3lf}", it->name.c_str(),
+    fprintf(f, "\t{\"container\": \"%s\", \"start\": %.3lf, \"end\" : %.3lf}", it->name.c_str(),
             it->start / 1000.0, it->end / 1000.0);
     if (std::next(it) == full_history.end())
       fprintf(f, "\n");

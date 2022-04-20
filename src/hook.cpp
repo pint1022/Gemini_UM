@@ -479,7 +479,7 @@ CUresult cuLaunchKernel_prehook(CUfunction f, unsigned int gridDimX, unsigned in
   int i = 0;
   while(kernelParams[i] != NULL)
   {
-	  //printf("%p\n",kernelParams[i]);
+	  DEBUG("%p\n",kernelParams[i]);
 	  i++;
   }
   //printf("end\n");

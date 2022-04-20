@@ -404,7 +404,7 @@ double get_token_from_scheduler(double next_burst) {
   attached = parse_response(rbuf, nullptr);
   new_quota = get_msg_data<double>(attached, rpos);
   //printf("Get token from scheduler, quota: %f", new_quota);
-  DEBUG("Get token from scheduler, quota: %f", new_quota);
+  DEBUG("Get token from scheduler, quota: %f, debug_mode %d", new_quota,  hook_inf.debug_mode);
   times++;
   //printf("get token %d times",times);
   return new_quota;

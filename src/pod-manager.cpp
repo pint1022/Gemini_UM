@@ -52,7 +52,7 @@ using std::chrono::time_point;
 
 // connection information, below are default values
 // can be changed by environment vairables
-char SCHEDULER_IP[20] = "0.0.0.0";
+char SCHEDULER_IP[20] = "127.0.0.1";
 uint16_t SCHEDULER_PORT = 50051;
 uint16_t POD_SERVER_PORT = 50052;
 

@@ -92,6 +92,8 @@ double QUOTA = 250.0;
 double MIN_QUOTA = 100.0;
 double WINDOW_SIZE = 10000.0;
 bool isSampling = true;
+int SAMPLE_COUNT = 3;
+
 int verbosity = 0;
 
 //
@@ -171,7 +173,7 @@ double ClientInfo::get_max_fraction() { return MAX_FRAC; }
 double ClientInfo::get_quota() {
   
   quota_ = BASE_QUOTA;
-  printf("%s:static quota, assign quota: %.3fms\n", name.c_str(), quota_);
+  // printf("%s:static quota, assign quota: %.3fms\n", name.c_str(), quota_);
   return quota_;
 }
 
@@ -484,8 +486,9 @@ void *schedule_daemon_func(void *) {
 
 void Sampling() {
   Sample a_sample;
+  int count = SAMPLE_COUNT;
   
-  for (auto it = history_list.rbegin(); it != history_list.rend(); it++) {
+  for (auto it = history_list.rbegin(); it != history_list.rend() && count-- > 0; it++) {
       // client may not use up all of the allocated time
       a_sample.ts = duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
       a_sample.name = it->name;
@@ -502,16 +505,25 @@ void Sampling() {
 // A background thread to record the profiling data
 //
 void *sampling_thread(void *) {
+  // const int kHeartbeatIntv = 500;
   const int kHeartbeatIntv = SAMPLING_RATE;
   int save_data = STORE_FACT;
+  DEBUG("start sampling: %d", kHeartbeatIntv);
   while (true) {
-    if (InSampling)
+    // if (InSampling)
       Sampling();
-    sleep(kHeartbeatIntv);
-    if (save_data-- == 0) {
-      upload_sampling();
-      save_data = SAMPLING_RATE;
-    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(kHeartbeatIntv));     
+    if (sample_list.size() > 0) {
+      if (save_data-- == 0) {
+        upload_sampling();
+        save_data = SAMPLING_RATE;
+        // break;
+      }
+    } 
+    // else {
+    //   INFO("sampling size: %d", sample_list.size());
+
+    // }
   }
   pthread_exit(nullptr);
 }
@@ -650,9 +662,9 @@ int main(int argc, char *argv[]) {
     ERROR("cannot bind port");
     exit(-1);
   }
-  DEBUG("%d: scheduler port: %ld\n", __LINE__, schd_port);
+  INFO("%d: scheduler port: %ld\n", __LINE__, schd_port);
   listen(sockfd, SOMAXCONN);
-    INFO("%d: Received sockfd. %d\n", __LINE__, sockfd);
+  INFO("%d: Received sockfd. %d\n", __LINE__, sockfd);
 
   pthread_t tid;
 
@@ -665,18 +677,23 @@ int main(int argc, char *argv[]) {
 
   rc = pthread_create(&tid, NULL, schedule_daemon_func, NULL);
   if (rc != 0) {
-    ERROR("Return code from pthread_create(): %d", rc);
+    ERROR("Return code from pthread_create() - schedule daemon: %d", rc);
     exit(rc);
   }
   pthread_detach(tid);
 
-  // read configuration file to setup pods
-  // read_resource_config();
 
   // start sampling thread
-  pthread_create(&tid, nullptr, sampling_thread, nullptr);
+  rc = pthread_create(&tid, nullptr, sampling_thread, nullptr);
+   if (rc != 0) {
+    ERROR("Return code from pthread_create() - sampling: %d", rc);
+    exit(rc);
+  }
+  INFO("%d: sampling", __LINE__);
+
   pthread_detach(tid);
 
+  // read configuration file to setup pods
   // Watch for newcomers (new ClientGroup).
   char fullpath[PATH_MAX];
   snprintf(fullpath, PATH_MAX, "%s/%s", limit_file_dir, limit_file_name);
@@ -733,18 +750,28 @@ void upload_sampling() {
   char filename[20];  
   sprintf(filename, "sampling.json");
   snprintf(fullpath, PATH_MAX, "%s/d_%s/%s", limit_file_dir, limit_file_name, filename);
+  INFO("dump log: %s", fullpath);
 
-  FILE *f = fopen(fullpath, "a");
-  fputs("[\n", f);
-  for (auto it = sample_list.begin(); it != sample_list.end(); it++) {
-    fprintf(f, "\t{\"ts\": \"%jd\"container\": \"%s\", \"start\": %.3lf, \"end\" : %.3lf}",it->ts, it->name.c_str(),
+//
+// overwrite the previous data, assume it is picked up already
+//
+  FILE *f = fopen(fullpath, "w");
+  fputs("{\n", f);
+
+  //output some  data
+  int count = SAMPLE_COUNT;
+
+  for (auto it = sample_list.begin(); it != sample_list.end() && count-- > 0; it++) {
+    fprintf(f, "\t{\"ts\": \"%jd\",\"container\": \"%s\", \"start\": %.3lf, \"end\" : %.3lf}",it->ts, it->name.c_str(),
             it->start / 1000.0, it->end / 1000.0);
     if (std::next(it) == sample_list.end())
       fprintf(f, "\n");
     else
       fprintf(f, ",\n");
+    // sample_list.pop_front();
   }
-  fputs("]\n", f);
+  fputs("}\n", f);
+  sample_list.clear();
   fclose(f);
 
   INFO("sample appended to %s", fullpath);

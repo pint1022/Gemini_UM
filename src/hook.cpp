@@ -477,11 +477,11 @@ CUresult cuLaunchKernel_prehook(CUfunction f, unsigned int gridDimX, unsigned in
                                 void **extra) {
   double new_quota, next_burst;
   int i = 0;
-  // while(kernelParams[i] != NULL)
-  // {
-	//   DEBUG("%p\n",kernelParams[i]);
-	//   i++;
-  // }
+  while(kernelParams[i] != NULL)
+  {
+	  DEBUG("%p\n",kernelParams[i]);
+	  i++;
+  }
   //printf("end\n");
 
   window_predictor.record_stop();

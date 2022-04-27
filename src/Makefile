@@ -86,5 +86,13 @@ gem-pmgr: pod-manager.o debug.o comm.o
 	$(EXEC) mkdir -p $(PREFIX)/bin
 	$(EXEC) cp $@ $(PREFIX)/bin
 
+exporter.o: exporter.cpp debug.h comm.h util.h
+	$(EXEC) g++ $(CXXFLAGS) -o $@ -c $<
+
+# alnr-exporter: exporter.o debug.o comm.o
+# 	$(EXEC) g++ $(LDFLAGS) -pthread -rdynamic $+ -o $@
+# 	$(EXEC) mkdir -p $(PREFIX)/bin
+# 	$(EXEC) cp $@ $(PREFIX)/bin
+
 clean:
 	rm -f *.o

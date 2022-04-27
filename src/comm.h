@@ -26,7 +26,7 @@
 #include <functional>
 
 typedef int32_t reqid_t;
-enum comm_request_t { REQ_QUOTA, REQ_MEM_LIMIT, REQ_MEM_UPDATE };
+enum comm_request_t { REQ_QUOTA, REQ_MEM_LIMIT, REQ_MEM_UPDATE, REQ_SAMPLE };
 const size_t REQ_MSG_LEN = 80;
 const size_t RSP_MSG_LEN = 40;
 

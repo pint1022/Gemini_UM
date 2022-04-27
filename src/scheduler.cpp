@@ -419,6 +419,21 @@ void handle_message(int client_sock, char *message) {
     WARNING("scheduler always returns true for memory usage update!");
     prepare_response(sbuf, REQ_MEM_UPDATE, req_id, 1);
     send(client_sock, sbuf, RSP_MSG_LEN, 0);
+  } else if (req == REQ_SAMPLE) {
+    auto  it = sample_list.begin();
+    if (it !=sample_list.end()) {
+      // a_sample.ts = duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+      // a_sample.name = it->name;
+      // a_sample.quota = client_info_map[it->name]->get_quota();
+      // a_sample.start = it->start;
+      // a_sample.end = it->end;
+      // a_sample.burst = client_info_map[it->name]->get_burst();
+      // a_sample.overuse = client_info_map[it->name]->get_overuse();
+
+      sprintf(sbuf, "\t{\"ts\": \"%jd\",\"cont\": \"%s\", \"st\": %.3lf, \"ed\" : %.3lf}",it->ts, it->name.c_str(),
+              it->start / 1000.0, it->end / 1000.0);    
+      send(client_sock, sbuf, RSP_MSG_LEN, 0);
+    }
   } else {
     WARNING("\"%s\" send an unknown request.", client_name);
   }

@@ -731,12 +731,12 @@ int main(int argc, char *argv[]) {
 
 
   // start sampling thread
-  // rc = pthread_create(&tid, nullptr, sampling_thread, nullptr);
-  //  if (rc != 0) {
-  //   ERROR("Return code from pthread_create() - sampling: %d", rc);
-  //   exit(rc);
-  // }
-  // INFO("%d: sampling", __LINE__);
+  rc = pthread_create(&tid, nullptr, sampling_thread, nullptr);
+   if (rc != 0) {
+    ERROR("Return code from pthread_create() - sampling: %d", rc);
+    exit(rc);
+  }
+  INFO("%d: sampling", __LINE__);
 
   pthread_detach(tid);
 

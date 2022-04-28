@@ -456,8 +456,10 @@ void handle_message(int client_sock, char *message) {
       // a_sample.end = it->end;
       // a_sample.burst = client_info_map[it->name]->get_burst();
       // a_sample.overuse = client_info_map[it->name]->get_overuse();
+      sprintf(sbuf, "\t{\"ts\": \"%jd\",\"cn\": \"%s\",\"me\" : %.3lf (K),}",it->ts, it->name.c_str(),
+               it->memsize);    
 
-      sprintf(sbuf, "\t{\"tms\": \"%jd\",\"ctn\": \"%s\", \"bst\": %.3lf, \"ovs\" : %.3lf, \"h2d\" : %d(K), \"d2h\" : %d (K),\"mem\" : %.3lf (K),}",it->ts, it->name.c_str(),
+      // sprintf(sbuf, "\t{\"tms\": \"%jd\",\"ctn\": \"%s\", \"bst\": %.3lf, \"ovs\" : %.3lf, \"h2d\" : %d(K), \"d2h\" : %d (K),\"mem\" : %.3lf (K),}",it->ts, it->name.c_str(),\
               it->burst / 1000.0, it->overuse / 1000.0, it->h2dsize / 1000, it->d2hsize / 1000, it->memsize);    
       send(client_sock, sbuf, RSP_MSG_LEN, 0);
     }
@@ -807,10 +809,9 @@ void upload_sampling() {
   int count = SAMPLE_COUNT;
 
   for (auto it = sample_list.begin(); it != sample_list.end() && count-- > 0; it++) {
-    // fprintf(f, "\t{\"ts\": \"%jd\",\"container\": \"%s\", \"start\": %.3lf, \"end\" : %.3lf}",it->ts, it->name.c_str(),
-    //         it->start / 1000.0, it->end / 1000.0);
-    fprintf(f, "\t{\"tms\": \"%jd\",\"ctn\": \"%s\", \"bst\": %.3lf, \"ovs\" : %.3lf, \"h2d\" : %dK, \"d2h\" : %dK,}",it->ts, it->name.c_str(),
-              it->burst / 1000.0, it->overuse / 1000.0, it->h2dsize / 1000,  it->d2hsize / 1000);    
+    fprintf(f, "\t{\"tms\": \"%jd\",\"ctn\": \"%s\", \"bst\": %.3lf, \"ovs\" : %.3lf, \"h2d\" : %dK, \"d2h\" : %dK, \"mem\" : %.3lf (K),}",it->ts, it->name.c_str(),
+              it->burst / 1000.0, it->overuse / 1000.0, it->h2dsize / 1000,  it->d2hsize / 1000, it->memsize);    
+ 
 
     if (std::next(it) == sample_list.end())
       fprintf(f, "\n");

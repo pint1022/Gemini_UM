@@ -40,6 +40,8 @@ class ClientInfo {
   ClientInfo(double baseq, double minq, double maxq, double minf, double maxf);
   ~ClientInfo();
   void set_burst(double burst);
+  void set_h2dsize(int h2dsize);
+  void set_d2hsize(int);
   void update_return_time(double overuse);
   void Record(double quota);
   double get_min_fraction();
@@ -47,6 +49,11 @@ class ClientInfo {
   double get_quota();
   double get_overuse();
   double get_burst();
+  int get_h2dsize();
+  int get_d2hsize();
+  double get_memsize();
+  void set_memsize(double memsize);
+
   std::map<unsigned long long, size_t> memory_map;
   std::string name;
   size_t gpu_mem_limit;
@@ -61,6 +68,11 @@ class ClientInfo {
   double latest_overuse_;
   double latest_actual_usage_;  // client may return eariler (before quota expire)
   double burst_;                // duration of kernel burst
+  int h2dsize_;                // h2d mem size
+  int d2hsize_;                // d2h mem size
+  double h2d_;                // duration of h2d memcpy
+  double d2h_;                // duration of d2h memcpy
+  double memsize_;            // memory used 
 };
 
 // the connection to specific container
@@ -88,11 +100,16 @@ bool schd_priority(const valid_candidate_t &a, const valid_candidate_t &b);
 struct Sample {
   uint64_t  ts;
   std::string name;
-  double start;
-  double end;
-  int burst;
-  int quota;
-  int overuse;
+  double start;  //kernel start time
+  double end;   //kernel end time
+  double burst;   // real burst time 
+  int quota;   //time slice quota
+  int overuse; //overuse time slice
+  double h2d;   //duration of h2d memcpy
+  double d2h;   //duration of d2h memcpy
+  int h2dsize;   //h2d memcpy size
+  int d2hsize;   //d2h memcpy size
+  double memsize; 
 };
 void Sampling();
 

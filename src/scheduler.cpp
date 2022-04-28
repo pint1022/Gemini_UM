@@ -154,6 +154,13 @@ void ClientInfo::update_return_time(double overuse) {
   }
 #endif
 }
+void ClientInfo::set_h2dsize(int h2dsize) { h2dsize_ = h2dsize; }
+void ClientInfo::set_d2hsize(int d2hsize) { d2hsize_ = d2hsize; }
+int ClientInfo::get_h2dsize() { return  h2dsize_;  }
+int ClientInfo::get_d2hsize() { return  d2hsize_;  }
+
+void ClientInfo::set_memsize(double memsize) { memsize_ = memsize; }
+double ClientInfo::get_memsize() { return memsize_; }
 
 void ClientInfo::Record(double quota) {
   History hist;
@@ -216,7 +223,7 @@ void read_resource_config(char* full_path) {
   INFO("There are %d clients in the system...", container_num);
   for (int i = 0; i < container_num; i++) {
     fin >> client_name >> gpu_min_fraction >> gpu_max_fraction >> gpu_memory_size;
-  INFO("%d: %s, %.2f", __LINE__, client_name, gpu_min_fraction);
+    // INFO("%d: %s, %.2f", __LINE__, client_name, gpu_min_fraction);
     client_inf = new ClientInfo(QUOTA, MIN_QUOTA, gpu_max_fraction * WINDOW_SIZE, gpu_min_fraction,
                                 gpu_max_fraction);
     client_inf->name = client_name;
@@ -417,7 +424,27 @@ void handle_message(int client_sock, char *message) {
     // ***for communication interface compatibility only***
     // memory usage is only tracked on hook library side
     WARNING("scheduler always returns true for memory usage update!");
+    int bytes, is_allocated;
+    bytes = get_msg_data<int>(attached, offset);
+    is_allocated = get_msg_data<int>(attached, offset);
+    if (is_allocated == 1) {
+      client_inf->set_h2dsize(client_inf->get_h2dsize() + bytes /1000.0);
+    } else {
+      client_inf->set_h2dsize(client_inf->get_h2dsize() - bytes /1000.0);
+    }
     prepare_response(sbuf, REQ_MEM_UPDATE, req_id, 1);
+    send(client_sock, sbuf, RSP_MSG_LEN, 0);
+   }else if (req == REQ_MEM_H2D) {
+    int h2dsize;
+    h2dsize = get_msg_data<int>(attached, offset);
+    client_inf->set_h2dsize(h2dsize);
+    prepare_response(sbuf, REQ_MEM_H2D, req_id, 1);
+    send(client_sock, sbuf, RSP_MSG_LEN, 0);
+  } else if (req == REQ_MEM_D2H) {
+    int d2hsize;
+    d2hsize = get_msg_data<int>(attached, offset);
+    client_inf->set_d2hsize(d2hsize);
+    prepare_response(sbuf, REQ_MEM_D2H, req_id, 1);
     send(client_sock, sbuf, RSP_MSG_LEN, 0);
   } else if (req == REQ_SAMPLE) {
     auto  it = sample_list.begin();
@@ -430,8 +457,8 @@ void handle_message(int client_sock, char *message) {
       // a_sample.burst = client_info_map[it->name]->get_burst();
       // a_sample.overuse = client_info_map[it->name]->get_overuse();
 
-      sprintf(sbuf, "\t{\"ts\": \"%jd\",\"cont\": \"%s\", \"st\": %.3lf, \"ed\" : %.3lf}",it->ts, it->name.c_str(),
-              it->start / 1000.0, it->end / 1000.0);    
+      sprintf(sbuf, "\t{\"tms\": \"%jd\",\"ctn\": \"%s\", \"bst\": %.3lf, \"ovs\" : %.3lf, \"h2d\" : %d(K), \"d2h\" : %d (K),\"mem\" : %.3lf (K),}",it->ts, it->name.c_str(),
+              it->burst / 1000.0, it->overuse / 1000.0, it->h2dsize / 1000, it->d2hsize / 1000, it->memsize);    
       send(client_sock, sbuf, RSP_MSG_LEN, 0);
     }
   } else {
@@ -511,7 +538,10 @@ void Sampling() {
       a_sample.start = it->start;
       a_sample.end = it->end;
       a_sample.burst = client_info_map[it->name]->get_burst();
+      a_sample.memsize = client_info_map[it->name]->get_memsize();
       a_sample.overuse = client_info_map[it->name]->get_overuse();
+      // a_sample.h2dsize = client_info_map[it->name]->get_h2dsize();
+      // a_sample.d2hsize = client_info_map[it->name]->get_d2hsize();
       sample_list.push_back(a_sample);
     }
 }
@@ -699,12 +729,12 @@ int main(int argc, char *argv[]) {
 
 
   // start sampling thread
-  rc = pthread_create(&tid, nullptr, sampling_thread, nullptr);
-   if (rc != 0) {
-    ERROR("Return code from pthread_create() - sampling: %d", rc);
-    exit(rc);
-  }
-  INFO("%d: sampling", __LINE__);
+  // rc = pthread_create(&tid, nullptr, sampling_thread, nullptr);
+  //  if (rc != 0) {
+  //   ERROR("Return code from pthread_create() - sampling: %d", rc);
+  //   exit(rc);
+  // }
+  // INFO("%d: sampling", __LINE__);
 
   pthread_detach(tid);
 
@@ -777,8 +807,11 @@ void upload_sampling() {
   int count = SAMPLE_COUNT;
 
   for (auto it = sample_list.begin(); it != sample_list.end() && count-- > 0; it++) {
-    fprintf(f, "\t{\"ts\": \"%jd\",\"container\": \"%s\", \"start\": %.3lf, \"end\" : %.3lf}",it->ts, it->name.c_str(),
-            it->start / 1000.0, it->end / 1000.0);
+    // fprintf(f, "\t{\"ts\": \"%jd\",\"container\": \"%s\", \"start\": %.3lf, \"end\" : %.3lf}",it->ts, it->name.c_str(),
+    //         it->start / 1000.0, it->end / 1000.0);
+    fprintf(f, "\t{\"tms\": \"%jd\",\"ctn\": \"%s\", \"bst\": %.3lf, \"ovs\" : %.3lf, \"h2d\" : %dK, \"d2h\" : %dK,}",it->ts, it->name.c_str(),
+              it->burst / 1000.0, it->overuse / 1000.0, it->h2dsize / 1000,  it->d2hsize / 1000);    
+
     if (std::next(it) == sample_list.end())
       fprintf(f, "\n");
     else

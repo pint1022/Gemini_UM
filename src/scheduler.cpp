@@ -809,7 +809,7 @@ void upload_sampling() {
   int count = SAMPLE_COUNT;
 
   for (auto it = sample_list.begin(); it != sample_list.end() && count-- > 0; it++) {
-    fprintf(f, "\t{\"tms\": \"%jd\",\"ctn\": \"%s\", \"bst\": %.3lf, \"ovs\" : %.3lf, \"h2d\" : %dK, \"d2h\" : %dK, \"mem\" : %.3lf (K),}",it->ts, it->name.c_str(),
+    fprintf(f, "\t{\"tms\": \"%jd\",\"ctn\": \"%s\", \"bst\": %.3lf, \"ovs\" : %.3lf, \"h2d\" : %d(K), \"d2h\" : %d(K), \"mem\" : %.3lf (K)}",it->ts, it->name.c_str(),
               it->burst / 1000.0, it->overuse / 1000.0, it->h2dsize / 1000,  it->d2hsize / 1000, it->memsize);    
  
 

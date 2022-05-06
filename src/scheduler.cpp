@@ -420,33 +420,35 @@ void handle_message(int client_sock, char *message) {
   } else if (req == REQ_MEM_LIMIT) {
     prepare_response(sbuf, REQ_MEM_LIMIT, req_id, (size_t)0, client_inf->gpu_mem_limit);
     send(client_sock, sbuf, RSP_MSG_LEN, 0);
-  } else if (req == REQ_MEM_UPDATE) {
-    // ***for communication interface compatibility only***
-    // memory usage is only tracked on hook library side
-    WARNING("scheduler always returns true for memory usage update!");
-    int bytes, is_allocated;
-    bytes = get_msg_data<int>(attached, offset);
-    is_allocated = get_msg_data<int>(attached, offset);
-    if (is_allocated == 1) {
-      client_inf->set_h2dsize(client_inf->get_h2dsize() + bytes /1000.0);
-    } else {
-      client_inf->set_h2dsize(client_inf->get_h2dsize() - bytes /1000.0);
-    }
-    prepare_response(sbuf, REQ_MEM_UPDATE, req_id, 1);
-    send(client_sock, sbuf, RSP_MSG_LEN, 0);
-   }else if (req == REQ_MEM_H2D) {
-    int h2dsize;
-    h2dsize = get_msg_data<int>(attached, offset);
-    client_inf->set_h2dsize(h2dsize);
-    prepare_response(sbuf, REQ_MEM_H2D, req_id, 1);
-    send(client_sock, sbuf, RSP_MSG_LEN, 0);
-  } else if (req == REQ_MEM_D2H) {
-    int d2hsize;
-    d2hsize = get_msg_data<int>(attached, offset);
-    client_inf->set_d2hsize(d2hsize);
-    prepare_response(sbuf, REQ_MEM_D2H, req_id, 1);
-    send(client_sock, sbuf, RSP_MSG_LEN, 0);
-  } else if (req == REQ_SAMPLE) {
+  } 
+  // else if (req == REQ_MEM_UPDATE) {
+  //   // ***for communication interface compatibility only***
+  //   // memory usage is only tracked on hook library side
+  //   int bytes, is_allocated;
+  //   bytes = get_msg_data<int>(attached, offset);
+  //   is_allocated = get_msg_data<int>(attached, offset);
+  //   INFO(" memory usage update %d, inc: %d\n", bytes, is_allocated);
+  //   if (is_allocated == 1) {
+  //     client_inf->set_memsize(client_inf->get_memsize() + bytes /1000.0);
+  //   } else {
+  //     client_inf->set_memsize(client_inf->get_memsize() - bytes /1000.0);
+  //   }
+  //   prepare_response(sbuf, REQ_MEM_UPDATE, req_id, 1);
+  //   send(client_sock, sbuf, RSP_MSG_LEN, 0);
+  //  }else if (req == REQ_MEM_H2D) {
+  //   int h2dsize;
+  //   h2dsize = get_msg_data<int>(attached, offset);
+  //   client_inf->set_h2dsize(h2dsize);
+  //   prepare_response(sbuf, REQ_MEM_H2D, req_id, 1);
+  //   send(client_sock, sbuf, RSP_MSG_LEN, 0);
+  // } else if (req == REQ_MEM_D2H) {
+  //   int d2hsize;
+  //   d2hsize = get_msg_data<int>(attached, offset);
+  //   client_inf->set_d2hsize(d2hsize);
+  //   prepare_response(sbuf, REQ_MEM_D2H, req_id, 1);
+  //   send(client_sock, sbuf, RSP_MSG_LEN, 0);
+  // } 
+  else if (req == REQ_SAMPLE) {
     auto  it = sample_list.begin();
     if (it !=sample_list.end()) {
       // a_sample.ts = duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
@@ -461,6 +463,7 @@ void handle_message(int client_sock, char *message) {
 
       // sprintf(sbuf, "\t{\"tms\": \"%jd\",\"ctn\": \"%s\", \"bst\": %.3lf, \"ovs\" : %.3lf, \"h2d\" : %d(K), \"d2h\" : %d (K),\"mem\" : %.3lf (K),}",it->ts, it->name.c_str(),\
               it->burst / 1000.0, it->overuse / 1000.0, it->h2dsize / 1000, it->d2hsize / 1000, it->memsize);    
+      sample_list.pop_front();
       send(client_sock, sbuf, RSP_MSG_LEN, 0);
     }
   } else {
@@ -532,6 +535,20 @@ void Sampling() {
   Sample a_sample;
   int count = SAMPLE_COUNT;
   
+  // if (history_list.back() != NULL) {
+  //   History t_hist = history_list.back();
+  //   a_sample.ts = duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+  //   a_sample.name = t_hist.name;
+  //   a_sample.quota = client_info_map[t_hist.name]->get_quota();
+  //   a_sample.start = t_hist.start;
+  //   a_sample.end = t_hist.end;
+  //   a_sample.burst = client_info_map[t_hist.name]->get_burst();
+  //   a_sample.memsize = client_info_map[t_hist.name]->get_memsize();
+  //   a_sample.overuse = client_info_map[t_hist.name]->get_overuse();
+  //   a_sample.h2dsize = client_info_map[t_hist.name]->get_h2dsize();
+  //   a_sample.d2hsize = client_info_map[t_hist.name]->get_d2hsize();
+  //   sample_list.push_back(a_sample);
+  // }
   for (auto it = history_list.rbegin(); it != history_list.rend() && count-- > 0; it++) {
       // client may not use up all of the allocated time
       a_sample.ts = duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
@@ -542,8 +559,8 @@ void Sampling() {
       a_sample.burst = client_info_map[it->name]->get_burst();
       a_sample.memsize = client_info_map[it->name]->get_memsize();
       a_sample.overuse = client_info_map[it->name]->get_overuse();
-      // a_sample.h2dsize = client_info_map[it->name]->get_h2dsize();
-      // a_sample.d2hsize = client_info_map[it->name]->get_d2hsize();
+      a_sample.h2dsize = client_info_map[it->name]->get_h2dsize();
+      a_sample.d2hsize = client_info_map[it->name]->get_d2hsize();
       sample_list.push_back(a_sample);
     }
 }
@@ -563,14 +580,10 @@ void *sampling_thread(void *) {
     if (sample_list.size() > 0) {
       if (save_data-- == 0) {
         upload_sampling();
-        save_data = SAMPLING_RATE;
+        save_data = STORE_FACT;
         // break;
       }
     } 
-    // else {
-    //   INFO("sampling size: %d", sample_list.size());
-
-    // }
   }
   pthread_exit(nullptr);
 }
@@ -820,7 +833,7 @@ void upload_sampling() {
     // sample_list.pop_front();
   }
   fputs("}\n", f);
-  sample_list.clear();
+  // sample_list.clear();
   fclose(f);
 
   INFO("sample appended to %s", fullpath);

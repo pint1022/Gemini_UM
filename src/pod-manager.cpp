@@ -291,7 +291,7 @@ int hook_update_memory_usage(size_t mem_size, int allocate, int sockfd) {
     gpu_mem_used -= mem_size;
     allocation_map[sockfd] -= mem_size;
   }
-  DEBUG("GPU memory usage = %ld bytes.", gpu_mem_used);
+  // DEBUG("GPU memory usage = %ld bytes.", gpu_mem_used);
   pthread_mutex_unlock(&mem_info_mutex);
   return ok;
 }
@@ -429,7 +429,7 @@ void *hook_thread_func(void *args) {
   pthread_mutex_lock(&mem_info_mutex);
   gpu_mem_used -= allocation_map[sockfd];
   allocation_map.erase(sockfd);
-  DEBUG("GPU memory usage = %ld bytes.", gpu_mem_used);
+  // DEBUG("GPU memory usage = %ld bytes.", gpu_mem_used);
   pthread_mutex_unlock(&mem_info_mutex);
 
   pthread_mutex_lock(&client_stat_mutex);

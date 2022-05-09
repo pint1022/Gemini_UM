@@ -42,7 +42,7 @@ CXXFLAGS += -O2
 endif
 
 # Target rules
-all: libgemhook.so.1 gem-schd gem-pmgr
+all: libgemhook.so.1 gem-schd gem-pmgr alnr
 
 debug.o: debug.cpp debug.h
 	g++ -fPIC $(CXXFLAGS) -o $@ -c $<
@@ -86,13 +86,13 @@ gem-pmgr: pod-manager.o debug.o comm.o
 	$(EXEC) mkdir -p $(PREFIX)/bin
 	$(EXEC) cp $@ $(PREFIX)/bin
 
-exporter.o: exporter.cpp debug.h comm.h util.h
+exporter.o: exporter.cpp debug.h comm.h util.h exporter.h
 	$(EXEC) g++ $(CXXFLAGS) -o $@ -c $<
 
-# alnr-exporter: exporter.o debug.o comm.o
-# 	$(EXEC) g++ $(LDFLAGS) -pthread -rdynamic $+ -o $@
-# 	$(EXEC) mkdir -p $(PREFIX)/bin
-# 	$(EXEC) cp $@ $(PREFIX)/bin
+alnr: exporter.o debug.o comm.o
+	$(EXEC) g++  $+ $(LDFLAGS) -pthread -rdynamic  -o $@
+	$(EXEC) mkdir -p $(PREFIX)/bin
+	$(EXEC) cp $@ $(PREFIX)/bin
 
 clean:
 	rm -f *.o

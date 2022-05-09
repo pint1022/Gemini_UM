@@ -837,7 +837,6 @@ void upload_sampling() {
   fclose(f);
 
   INFO("sample appended to %s", fullpath);
-  exit(0);
 }
 
 #ifdef _DEBUG
@@ -859,6 +858,5 @@ void dump_history(int sig) {
   fclose(f);
 
   INFO("history dumped to %s", filename);
-  exit(0);
 }
 #endif

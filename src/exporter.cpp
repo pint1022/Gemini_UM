@@ -148,7 +148,7 @@ void *sampler_service_func(void *args) {
   while ((recv_rc = recv(server_sockfd, rbuf, REQ_MSG_LEN, 0)) > 0) {
     handle_message(server_sockfd, rbuf);
   }
-  DEBUG("Connection closed. recv() returns %ld.", recv_rc);
+  DEBUG("Alnr: Connection closed. recv() returns %ld.", recv_rc);
   close(server_sockfd);
   delete (int *)args;
   delete[] rbuf;
@@ -205,8 +205,10 @@ int main(int argc, char *argv[]) {
         alnr_port = strtoul(optarg, nullptr, 10);
         break;      
       case 'G':
-        strncpy(gpu_list, optarg, GPU_LIST_MAX - 1);
-        break;      
+        // strncpy(gpu_list, optarg, GPU_LIST_MAX - 1);
+        INFO("gpu list %s\n", optarg);
+
+        break;         
       case 's':
         SAMPLING_RATE = atof(optarg);
         break;
@@ -217,16 +219,18 @@ int main(int argc, char *argv[]) {
         printf("usage: %s [options]\n", argv[0]);
         puts("Options:");
         puts("    -d [SAMPLE_DIR], --sample_file_dir [SAMPLE_DIR]");
-        puts("    -G [GPU_LIST], --gpu_list [GPU_LIST]");
         puts("    -P [PORT], --port [PORT]");
+        puts("    -G [GPU_LIST], --gpu_list [GPU_LIST]");
         puts("    -s [SAMPLING_RATE], --sampling_rate [SAMPLING_RATE]");
         puts("    -v [LEVEL], --verbose [LEVEL]");
         puts("    -h, --help");
         return 0;
+     
       default:
         break;
     }
   }
+  INFO("Alnair server starting ...\n");
 
   if (verbosity > 0) {
     printf("Sampling settings:\n");
@@ -261,7 +265,7 @@ int main(int argc, char *argv[]) {
     exit(-1);
   }
   listen(sockfd, SOMAXCONN);
-  INFO("%d: Received sampling sockfd. %d\n", __LINE__, sockfd);
+  INFO("%s,%d: Received sampling sockfd. %d\n",__FILE__, __LINE__, sockfd);
 
   pthread_t tid;
 

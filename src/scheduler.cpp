@@ -574,8 +574,9 @@ void *sampling_thread(void *) {
   int save_data = STORE_FACT;
   DEBUG("start sampling: %d", kHeartbeatIntv);
   while (true) {
-    // if (InSampling)
-      Sampling();
+    if (!InSampling)
+       break;
+    Sampling();
     std::this_thread::sleep_for(std::chrono::milliseconds(kHeartbeatIntv));     
     if (sample_list.size() > 0) {
       if (save_data-- == 0) {
@@ -585,6 +586,7 @@ void *sampling_thread(void *) {
       }
     } 
   }
+  DEBUG("Stopped sampling...");
   pthread_exit(nullptr);
 }
 
@@ -598,6 +600,7 @@ void *pod_client_func(void *args) {
   }
   DEBUG("Connection closed by Pod manager. recv() returns %ld.", recv_rc);
   close(pod_sockfd);
+  InSampling = false;
   delete (int *)args;
   delete[] rbuf;
   pthread_exit(NULL);

@@ -836,7 +836,7 @@ void upload_sampling() {
   // sample_list.clear();
   fclose(f);
 
-  INFO("sample appended to %s", fullpath);
+  // INFO("sample appended to %s", fullpath);
 }
 
 #ifdef _DEBUG

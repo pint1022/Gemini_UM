@@ -230,7 +230,7 @@ int main(int argc, char *argv[]) {
         break;
     }
   }
-  INFO("Alnair server starting ...\n");
+  INFO("Alnair server starting ... v %d\n", verbosity);
 
   if (verbosity > 0) {
     printf("Sampling settings:\n");

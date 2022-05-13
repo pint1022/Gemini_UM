@@ -115,14 +115,14 @@ void handle_message(int client_sock, char *message) {
   char sbuf[RSP_MSG_LEN];
   char *attached, *client_name;
 
+  // DEBUG("received msg:[%x]", message);
+
   attached = parse_request(message, &client_name, &hostname_len, &req_id, &req);
+  DEBUG("name: %s, name_len_:%d, req %d\n", client_name, hostname_len, req);
 
   bzero(sbuf, RSP_MSG_LEN);
 
   if (req == REQ_QRY) {
-    // double overuse, burst, window;
-    // overuse = get_msg_data<double>(attached, offset);
-    // burst = get_msg_data<double>(attached, offset);    
     DEBUG("Req (%s): query.", client_name);
 
   } else if (req == REQ_REC) {
@@ -132,9 +132,9 @@ void handle_message(int client_sock, char *message) {
     // send(client_sock, sbuf, RSP_MSG_LEN, 0);
   } 
   else if (req == REQ_SAMPLE) {
-    DEBUG("Req: recording.");
+    DEBUG("Req: sampling.");
   } else {
-    WARNING("\"%s\" send an unknown request.", client_name);
+    WARNING("\"%s\" receive an unknown request.", client_name);
   }
 }
 
@@ -146,6 +146,7 @@ void *sampler_service_func(void *args) {
   char *rbuf = new char[REQ_MSG_LEN];
   ssize_t recv_rc;
   while ((recv_rc = recv(server_sockfd, rbuf, REQ_MSG_LEN, 0)) > 0) {
+    DEBUG("recv: %d\n", recv_rc);
     handle_message(server_sockfd, rbuf);
   }
   DEBUG("Alnr: Connection closed. recv() returns %ld.", recv_rc);
@@ -164,7 +165,7 @@ void *sampling_daemon_func(void * sockfd) {
   int addrlen = sizeof(clientInfo);
   int forClientSockfd = 0;
 
-  INFO("Waiting for sampling req: %d", *(int*) sockfd);
+  // INFO("Waiting for sampling req: %d", *(int*) sockfd);
 
   while (
       (forClientSockfd = accept( *(int*) sockfd, (struct sockaddr *)&clientInfo, (socklen_t *)&addrlen))) {
@@ -233,10 +234,10 @@ int main(int argc, char *argv[]) {
   INFO("Alnair server starting ... v %d\n", verbosity);
 
   if (verbosity > 0) {
-    printf("Sampling settings:\n");
-    printf("    %-20s %s\n", "GPUs:", gpu_list);
-    printf("    %-20s %d\n", "server port:", alnr_port);
-    printf("    %-20s %d \n", "sampling rate:", SAMPLING_RATE);
+    INFO("Sampling settings:");
+    INFO("    %-20s %s", "GPUs:", gpu_list);
+    INFO("    %-20s %d", "server port:", alnr_port);
+    INFO("    %-20s %d", "sampling rate:", SAMPLING_RATE);
   }
 
   // register signal handler for debugging
@@ -265,7 +266,7 @@ int main(int argc, char *argv[]) {
     exit(-1);
   }
   listen(sockfd, SOMAXCONN);
-  INFO("%s,%d: Received sampling sockfd. %d\n",__FILE__, __LINE__, sockfd);
+  // INFO("%s,%d: Received sampling sockfd. %d\n",__FILE__, __LINE__, sockfd);
 
   pthread_t tid;
 
@@ -274,7 +275,6 @@ int main(int argc, char *argv[]) {
     ERROR("Return code from pthread_create() - sampling_daemon_func: %d", rc);
     exit(rc);
   }
-  INFO("%d: sampling server is up", __LINE__);
 
   pthread_detach(tid);
   main_loop = g_main_loop_new(nullptr, false);

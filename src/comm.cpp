@@ -70,11 +70,13 @@ char *parse_request(char *buf, char **name, size_t *name_len, reqid_t *id, comm_
   reqid_t id_;
   comm_request_t type_;
 
-  name_len_ = get_msg_data<size_t>(buf, pos);
-  name_ = buf + sizeof(size_t);
+
+  name_len_ = get_msg_data<size_t>(buf, pos);;
+  name_ = buf +  sizeof(size_t);
   pos += name_len_ + 1;  // 1 for the terminator
   id_ = get_msg_data<reqid_t>(buf, pos);
   type_ = get_msg_data<comm_request_t>(buf, pos);
+  DEBUG("name: %s, name_len_:%ld, reqtype size %d, id_ %d, type %d\n", name_, name_len_, sizeof(comm_request_t), id_, type_);
 
   if (name != nullptr) *name = name_;
   if (name_len != nullptr) *name_len = name_len_;

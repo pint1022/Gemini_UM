@@ -29,6 +29,7 @@ typedef int32_t reqid_t;
 enum comm_request_t { REQ_QUOTA=0, REQ_MEM_LIMIT, REQ_MEM_UPDATE, REQ_SAMPLE, REQ_MEM_D2H, REQ_MEM_H2D, REQ_REC, REQ_QRY };
 const size_t REQ_MSG_LEN = 80;
 const size_t RSP_MSG_LEN = 40;
+const size_t SAMPLE_MSG_LEN = 128;
 const size_t NAME_LEN = 20;
 
 reqid_t prepare_request(char *buf, comm_request_t type, ...);
@@ -36,8 +37,9 @@ reqid_t prepare_request(char *buf, comm_request_t type, ...);
 char *parse_request(char *buf, char **name, size_t *name_len, reqid_t *id, comm_request_t *type);
 
 size_t prepare_response(char *buf, comm_request_t type, reqid_t id, ...);
-
 char *parse_response(char *buf, reqid_t *id);
+size_t prepare_sample(char *buf,  reqid_t id, char *sample);
+
 
 // helper function for parsing message
 template <typename T>

@@ -85,6 +85,21 @@ char *parse_request(char *buf, char **name, size_t *name_len, reqid_t *id, comm_
   return buf + pos;
 }
 
+size_t prepare_sample(char *buf, reqid_t id, char *sample) {
+  size_t pos = 0;
+  int32_t sample_len = strlen(sample);
+
+  if ((sample == nullptr) || (sample_len <= 0)) return 0;
+
+  append_msg_data(buf, pos, id);
+  append_msg_data(buf, pos, sample_len + 1);
+  strncpy(buf + pos, sample, sample_len);
+  pos += sample_len;
+  append_msg_data(buf, pos, '\0');  // append a terminator
+
+  return pos;
+}
+
 size_t prepare_response(char *buf, comm_request_t type, reqid_t id, ...) {
   size_t pos = 0;
   va_list vl;

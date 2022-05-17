@@ -112,13 +112,13 @@ void handle_message(int client_sock, char *message) {
   reqid_t req_id;  // simply pass this req_id back to Pod manager
   comm_request_t req;
   size_t hostname_len, offset = 0;
-  char sbuf[RSP_MSG_LEN];
+  char sbuf[SAMPLE_MSG_LEN];
   char *attached, *client_name;
 
   // DEBUG("received msg:[%x]", message);
 
   attached = parse_request(message, &client_name, &hostname_len, &req_id, &req);
-  DEBUG("name: %s, name_len_:%d, req %d\n", client_name, hostname_len, req);
+  // DEBUG("name: %s, name_len_:%d, req %d\n", client_name, hostname_len, req);
 
   bzero(sbuf, RSP_MSG_LEN);
 
@@ -126,13 +126,18 @@ void handle_message(int client_sock, char *message) {
     DEBUG("Req (%s): query.", client_name);
 
   } else if (req == REQ_REC) {
-    DEBUG("Req (%s): record.", client_name);
-
-    // prepare_response(sbuf, REQ_MEM_LIMIT, req_id, (size_t)0, client_inf->gpu_mem_limit);
+    DEBUG("NOT implemented --- Req (%s): record.", client_name);
     // send(client_sock, sbuf, RSP_MSG_LEN, 0);
   } 
   else if (req == REQ_SAMPLE) {
-    DEBUG("Req: sampling.");
+    // DEBUG("Req: sampling.");
+    int burst_ = 100;
+    char *sample = "{\"ts\":\"1234567890\", \"bs\": \"100\", \"ou\": \"200\", \"ws\": \"300\", \"hd\": \"400\", \"dh\": \"500\"}";
+
+    offset = prepare_sample(sbuf, req_id, sample);
+    // INFO("Resp: %d, length %d", offset, strlen(sample));
+
+    send(client_sock, sbuf, SAMPLE_MSG_LEN, 0);    
   } else {
     WARNING("\"%s\" receive an unknown request.", client_name);
   }
@@ -149,7 +154,7 @@ void *sampler_service_func(void *args) {
     DEBUG("recv: %d\n", recv_rc);
     handle_message(server_sockfd, rbuf);
   }
-  DEBUG("Alnr: Connection closed. recv() returns %ld.", recv_rc);
+  DEBUG("Alnair Exporter: Connection closed. recv() returns %ld.", recv_rc);
   close(server_sockfd);
   delete (int *)args;
   delete[] rbuf;

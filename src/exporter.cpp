@@ -132,9 +132,11 @@ void handle_message(int client_sock, char *message) {
   else if (req == REQ_SAMPLE) {
     // DEBUG("Req: sampling.");
     int burst_ = 100;
-    char *sample = "{\"ts\":\"1234567890\", \"bs\": \"100\", \"ou\": \"200\", \"ws\": \"300\", \"hd\": \"400\", \"dh\": \"500\"}";
+    char *sample = "{\"Ts\": 1234567890, \"Bs\": 100, \"Ou\": 200, \"Ws\": 300, \"Hd\": 400, \"Dh\": 500}";
+    char *podname = "test";
+    char *uuid = "GPU-4317df59-a60c-7248-52ce-a13ac128d652";
 
-    offset = prepare_sample(sbuf, req_id, sample);
+    offset = prepare_sample(sbuf, req_id, sample, podname, uuid);
     // INFO("Resp: %d, length %d", offset, strlen(sample));
 
     send(client_sock, sbuf, SAMPLE_MSG_LEN, 0);    

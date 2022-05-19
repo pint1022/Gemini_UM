@@ -31,6 +31,8 @@ const size_t REQ_MSG_LEN = 80;
 const size_t RSP_MSG_LEN = 40;
 const size_t SAMPLE_MSG_LEN = 128;
 const size_t NAME_LEN = 20;
+const size_t POD_NAME_LEN = 4;
+const size_t UUID_LEN = 4;
 
 reqid_t prepare_request(char *buf, comm_request_t type, ...);
 
@@ -38,7 +40,7 @@ char *parse_request(char *buf, char **name, size_t *name_len, reqid_t *id, comm_
 
 size_t prepare_response(char *buf, comm_request_t type, reqid_t id, ...);
 char *parse_response(char *buf, reqid_t *id);
-size_t prepare_sample(char *buf,  reqid_t id, char *sample);
+size_t prepare_sample(char *buf,  reqid_t id, char *sample, char * , char*);
 
 
 // helper function for parsing message

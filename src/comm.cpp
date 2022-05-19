@@ -85,17 +85,57 @@ char *parse_request(char *buf, char **name, size_t *name_len, reqid_t *id, comm_
   return buf + pos;
 }
 
-size_t prepare_sample(char *buf, reqid_t id, char *sample) {
+size_t prepare_sample(char *buf, reqid_t id, char *sample, char *podname, char *uuid) {
   size_t pos = 0;
-  int32_t sample_len = strlen(sample);
+  int32_t _len = strlen(sample);
 
-  if ((sample == nullptr) || (sample_len <= 0)) return 0;
+  if ((sample == nullptr) || (_len <= 0)) {
+    ERROR("Sample is empty");
+    return 0;
+  }
+  if ((podname == nullptr) || (strlen(podname) <= 0)) {
+    ERROR("Pod name is empty");
+    return 0;
+  }
+  if ((uuid == nullptr) || (strlen(uuid) <= 0)) {
+    ERROR("GPU uuid is empty");
+    return 0;
+  }
+  char *tmp;
 
   append_msg_data(buf, pos, id);
-  append_msg_data(buf, pos, sample_len + 1);
-  strncpy(buf + pos, sample, sample_len);
-  pos += sample_len;
-  append_msg_data(buf, pos, '\0');  // append a terminator
+  //
+  //pod name section
+  //
+   _len = strlen(podname);
+  if (_len > POD_NAME_LEN) {
+     tmp = podname + _len - POD_NAME_LEN;
+     _len = POD_NAME_LEN;
+  }
+  else
+     tmp = podname;
+  append_msg_data(buf, pos, _len);
+  strncpy(buf + pos, tmp, _len);
+  pos += _len;
+  //
+  //uuid name section
+  //
+   _len = strlen(uuid);
+  if (_len > UUID_LEN) {
+     tmp = uuid + _len - UUID_LEN;
+     _len = UUID_LEN;
+  }
+  else
+     tmp = uuid;
+  append_msg_data(buf, pos, _len);
+  strncpy(buf + pos, tmp, _len);
+  pos += _len;
+
+  _len = strlen(sample);
+  append_msg_data(buf, pos, _len );
+  strncpy(buf + pos, sample, _len);
+  pos += _len;
+  // append_msg_data(buf, pos, '\0');  // append a terminator
 
   return pos;
 }

@@ -61,6 +61,7 @@
 #ifdef RANDOM_QUOTA
 #include <random>
 #endif
+#include "comm.h"
 
 using std::string;
 using std::chrono::duration_cast;
@@ -91,17 +92,15 @@ struct timespec get_timespec_after(double ms) {
 double QUOTA = 250.0;
 double MIN_QUOTA = 100.0;
 double WINDOW_SIZE = 10000.0;
-bool isSampling = true;
-int SAMPLE_COUNT = 3;
 
 int verbosity = 0;
 
 //
 // PRF: profiling 
 //
-int SAMPLING_RATE = 1000;
-int STORE_FACT = 5;
 bool InSampling = true;
+int SAMPLING_RATE = 1000;
+
 std::list<Sample> sample_list;
 void upload_sampling();
 
@@ -458,7 +457,7 @@ void handle_message(int client_sock, char *message) {
       // a_sample.end = it->end;
       // a_sample.burst = client_info_map[it->name]->get_burst();
       // a_sample.overuse = client_info_map[it->name]->get_overuse();
-      sprintf(sbuf, "\t{\"ts\": \"%jd\",\"cn\": \"%s\",\"me\" : %.3lf (K),}",it->ts, it->name.c_str(),
+      sprintf(sbuf, "\t{\"Ts\": \"%jd\",\"Cn\": \"%s\",\"Mm\" : %.3lf (K),}",it->ts, it->name.c_str(),
                it->memsize);    
 
       // sprintf(sbuf, "\t{\"tms\": \"%jd\",\"ctn\": \"%s\", \"bst\": %.3lf, \"ovs\" : %.3lf, \"h2d\" : %d(K), \"d2h\" : %d (K),\"mem\" : %.3lf (K),}",it->ts, it->name.c_str(),\
@@ -587,6 +586,7 @@ void *sampling_thread(void *) {
     } 
   }
   DEBUG("Stopped sampling...");
+  upload_sampling();
   pthread_exit(nullptr);
 }
 
@@ -746,15 +746,15 @@ int main(int argc, char *argv[]) {
   pthread_detach(tid);
 
 
-  // start sampling thread
-  rc = pthread_create(&tid, nullptr, sampling_thread, nullptr);
-   if (rc != 0) {
-    ERROR("Return code from pthread_create() - sampling: %d", rc);
-    exit(rc);
-  }
-  INFO("%d: sampling", __LINE__);
+  // // start sampling thread
+  // rc = pthread_create(&tid, nullptr, sampling_thread, nullptr);
+  //  if (rc != 0) {
+  //   ERROR("Return code from pthread_create() - sampling: %d", rc);
+  //   exit(rc);
+  // }
+  // INFO("%d: sampling", __LINE__);
 
-  pthread_detach(tid);
+  // pthread_detach(tid);
 
   // read configuration file to setup pods
   // Watch for newcomers (new ClientGroup).
@@ -825,7 +825,9 @@ void upload_sampling() {
   int count = SAMPLE_COUNT;
 
   for (auto it = sample_list.begin(); it != sample_list.end() && count-- > 0; it++) {
-    fprintf(f, "\t{\"tms\": \"%jd\",\"ctn\": \"%s\", \"bst\": %.3lf, \"ovs\" : %.3lf, \"h2d\" : %d(K), \"d2h\" : %d(K), \"mem\" : %.3lf (K)}",it->ts, it->name.c_str(),
+    // example: "{\"Ts\": 1234567890, \"Bs\": 100, \"Ou\": 200, \"Ws\": 300, \"Hd\": 400, \"Dh\": 500}";
+
+    fprintf(f, "\t{\"Ts\": \"%jd\",\"Cn\": \"%s\", \"Bs\": %.3lf, \"Ou\" : %.3lf, \"Hd\" : %d(K), \"Dh\" : %d(K), \"Mm\" : %.3lf (K)}",it->ts, it->name.c_str(),
               it->burst / 1000.0, it->overuse / 1000.0, it->h2dsize / 1000,  it->d2hsize / 1000, it->memsize);    
  
 

@@ -78,8 +78,6 @@ char gpu_list[GPU_LIST_MAX] = ".";
 // PRF: profiling 
 //
 int SAMPLING_RATE = 1000;
-int STORE_FACT = 5;
-int SAMPLE_COUNT = 3;
 auto PROGRESS_START = steady_clock::now();
 
 // signal handler
@@ -111,13 +109,14 @@ inline double ms_since_start() {
 void handle_message(int client_sock, char *message) {
   reqid_t req_id;  // simply pass this req_id back to Pod manager
   comm_request_t req;
-  size_t hostname_len, offset = 0;
+  size_t hostname_len, offset = 0, uuid_len;
   char sbuf[SAMPLE_MSG_LEN];
-  char *attached, *client_name;
+  char *attached, *client_name, *uuid;
 
   // DEBUG("received msg:[%x]", message);
+// char *parse_export_request(char *buf, char **name, size_t *name_len, reqid_t *id, comm_request_t *type, char** uuid, size_t * uuid_len) ;
 
-  attached = parse_request(message, &client_name, &hostname_len, &req_id, &req);
+  attached = parse_export_request(message, &client_name, &hostname_len, &req_id, &req, &uuid, &uuid_len);
   // DEBUG("name: %s, name_len_:%d, req %d\n", client_name, hostname_len, req);
 
   bzero(sbuf, RSP_MSG_LEN);

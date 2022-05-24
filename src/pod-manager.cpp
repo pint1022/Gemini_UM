@@ -26,6 +26,8 @@
 #include <arpa/inet.h>
 #include <execinfo.h>
 #include <pthread.h>
+#include <thread>
+
 #include <signal.h>
 #include <sys/socket.h>
 #include <unistd.h>
@@ -38,6 +40,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <functional>
+#include <list>
 #include <map>
 #include <queue>
 
@@ -57,6 +60,15 @@ uint16_t SCHEDULER_PORT = 50051;
 uint16_t POD_SERVER_PORT = 50052;
 
 void sig_handler(int);
+
+int SAMPLING_RATE = 1000;
+// int STORE_FACT = 5;
+bool InSampling = true;
+std::list<Sample> sample_list;
+char EXPORTER_NAME[] = "alnr-exporter.kube-system.svc";
+uint16_t EXPORTER_PORT = 60018;
+Sample a_sample;
+char UUID[UUID_FULL_LEN];
 
 // thread interact with scheduler
 void *scheduler_thread_send_func(void *sockfd);
@@ -140,6 +152,67 @@ int retrieve_mem_info(int sockfd, const int MAX_RETRY, const long RETRY_TIMEOUT)
   return 0;
 }
 
+void pack_sample(char* buf, Sample &_sample) {
+// struct Sample {
+//   uint64_t  ts;
+//   std::string name;
+//   double start;  //kernel start time
+//   double end;   //kernel end time
+//   double burst;   // real burst time 
+//   int quota;   //time slice quota
+//   int overuse; //overuse time slice
+//   double h2d;   //duration of h2d memcpy
+//   double d2h;   //duration of d2h memcpy
+//   int h2dsize;   //h2d memcpy size
+//   int d2hsize;   //d2h memcpy size
+//   uint64_t memsize;  //memory used
+//   double remain;   //remain time in quota
+// };  
+
+//
+// TBF: need check the length 
+//
+  sprintf(buf, "{\"Ts\": %ld, \"Bs\": %.2f, \"Ou\": %.2f, \"Rm\": %.2f, \"Mm\": %ld}",
+     _sample.ts,
+     _sample.burst,
+     _sample.overuse,
+     _sample.remain,
+     _sample.memsize
+  );
+
+}
+//
+// A background thread to record the profiling data
+//
+void *sampling_thread(void * args) {
+  int export_sock = *((int *)args);  
+  // const int kHeartbeatIntv = 500;
+  const int kHeartbeatIntv = SAMPLING_RATE;
+  int save_data = STORE_FACT;
+  reqid_t req_id = 0;  // simply pass this req_id back to Pod manager
+  char sbuf[SAMPLE_MSG_LEN], rbuf[RSP_MSG_LEN], *attached;
+  int rc;
+
+  DEBUG("start sampling in podmanager: %d", kHeartbeatIntv);
+  while (true) {
+    if (!InSampling)
+       break;
+    std::this_thread::sleep_for(std::chrono::milliseconds(kHeartbeatIntv));       
+    // bzero(&a_sample, sizeof(Sample));
+    a_sample.ts = duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+    a_sample.memsize = gpu_mem_used;
+    // char *sample = "{\"Ts\": 1234567890, \"Bs\": 100, \"Ou\": 200, \"Ws\": 300, \"Hd\": 400, \"Dh\": 500}";
+    char sample[SAMPLE_LEN];
+    pack_sample(sample, a_sample);
+
+    prepare_export_request(sbuf, sample, pod_name, UUID);
+    send(export_sock, sbuf, SAMPLE_MSG_LEN, 0); 
+
+  }
+  DEBUG("Stopped sampling in podmanager...");
+  pthread_exit(nullptr);
+}
+
 int main(int argc, char *argv[]) {
   const int NET_OP_MAX_ATTEMPT = 5;  // maximum time retrying failed network operations
   const int NET_OP_RETRY_INTV = 10;  // seconds between two retries
@@ -156,6 +229,11 @@ int main(int argc, char *argv[]) {
     gethostname(pod_name, HOST_NAME_MAX);
   }
   pod_name_len = strlen(pod_name);
+
+  //
+  // UDE: profiling
+  //
+  // strcpy(a_sample.name,pod_name);
 
   /* get connection information from environment variable */
   // Pod server
@@ -176,6 +254,14 @@ int main(int argc, char *argv[]) {
   }
   INFO("scheduler %s:%u", SCHEDULER_IP, SCHEDULER_PORT);
 
+  char *uuid = getenv("UUID");
+  if (uuid != NULL) {
+    strcpy(UUID, uuid);
+  } else {
+    ERROR("retrieve UUID of GPU..");
+    exit(-1);
+  }
+  INFO("Pod server port = %u.", uuid);
   /* establish connection with scheduler */
   // create socket
   int schd_sockfd = socket(PF_INET, SOCK_STREAM, 0);
@@ -187,7 +273,7 @@ int main(int argc, char *argv[]) {
 
   // setup socket info
   struct sockaddr_in schd_info;
-  bzero(&schd_info, sizeof(schd_info));
+  bzero(&schd_info, sizeof(sockaddr_in));
   schd_info.sin_family = AF_INET;
   schd_info.sin_addr.s_addr = inet_addr(SCHEDULER_IP);
   schd_info.sin_port = htons(SCHEDULER_PORT);
@@ -236,6 +322,38 @@ int main(int argc, char *argv[]) {
   pthread_create(&schd_recv_tid, NULL, scheduler_thread_recv_func, &schd_sockfd);
   pthread_detach(schd_send_tid);
   pthread_detach(schd_recv_tid);
+
+  // start sampling thread
+  pthread_t tid;
+  int alnr_sockfd = socket(PF_INET, SOCK_STREAM, 0);
+  if (alnr_sockfd == -1) {
+    int err = errno;
+    ERROR("failed to create socket: %s", strerror(err));
+    exit(err);
+  }
+   // setup socket info
+  struct sockaddr_in exporter_info;
+  bzero(&exporter_info, sizeof(exporter_info));
+  exporter_info.sin_family = AF_INET;
+  exporter_info.sin_addr.s_addr = inet_addr(EXPORTER_NAME);
+  exporter_info.sin_port = htons(EXPORTER_PORT);
+
+  // connect to scheduler
+  rc = multiple_attempt(
+      [&]() -> int {
+        return connect(alnr_sockfd, (struct sockaddr *)&exporter_info, sizeof(exporter_info));
+      },
+      NET_OP_MAX_ATTEMPT, NET_OP_RETRY_INTV);
+  if (rc != 0) exit(rc);
+
+  rc = pthread_create(&tid, nullptr, sampling_thread, &alnr_sockfd);
+   if (rc != 0) {
+    ERROR("Return code from pthread_create() - sampling: %d", rc);
+    exit(rc);
+  }
+  INFO("%d: sampling", __LINE__);
+
+  pthread_detach(tid);
 
   int client_sockfd = 0;
   struct sockaddr_in client_info;
@@ -413,6 +531,12 @@ void *hook_thread_func(void *args) {
 
       // return remaining quota time
       len = prepare_response(sbuf, REQ_QUOTA, rid, quota_remain);
+
+      // UDE: Profiling
+      a_sample.burst = burst;
+      a_sample.overuse = overuse_ms;
+      a_sample.remain = quota_remain;
+     
     }
 
     if (len > 0) {

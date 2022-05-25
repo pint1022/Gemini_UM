@@ -31,7 +31,7 @@
 #include <signal.h>
 #include <sys/socket.h>
 #include <unistd.h>
-
+#include  <netdb.h>
 #include <cassert>
 #include <cerrno>
 #include <chrono>
@@ -261,7 +261,7 @@ int main(int argc, char *argv[]) {
     ERROR("retrieve UUID of GPU..");
     exit(-1);
   }
-  INFO("Pod server port = %u.", uuid);
+  INFO("Pod  UUID = %s.", uuid);
   /* establish connection with scheduler */
   // create socket
   int schd_sockfd = socket(PF_INET, SOCK_STREAM, 0);
@@ -333,25 +333,35 @@ int main(int argc, char *argv[]) {
   }
    // setup socket info
   struct sockaddr_in exporter_info;
+  struct hostent *he;
+
+
+  // get the addresses of www.yahoo.com:
+
+  he = gethostbyname(EXPORTER_NAME);
+
   bzero(&exporter_info, sizeof(exporter_info));
   exporter_info.sin_family = AF_INET;
-  exporter_info.sin_addr.s_addr = inet_addr(EXPORTER_NAME);
+  exporter_info.sin_addr.s_addr = inet_addr(inet_ntoa(*(struct in_addr*)he->h_addr));
   exporter_info.sin_port = htons(EXPORTER_PORT);
 
-  // connect to scheduler
+  // connect to collector server
   rc = multiple_attempt(
       [&]() -> int {
         return connect(alnr_sockfd, (struct sockaddr *)&exporter_info, sizeof(exporter_info));
       },
       NET_OP_MAX_ATTEMPT, NET_OP_RETRY_INTV);
-  if (rc != 0) exit(rc);
+  if (rc != 0) {
+    ERROR("collector server is not reachable...");
+    exit(rc);
+  }
 
   rc = pthread_create(&tid, nullptr, sampling_thread, &alnr_sockfd);
    if (rc != 0) {
     ERROR("Return code from pthread_create() - sampling: %d", rc);
     exit(rc);
   }
-  INFO("%d: sampling", __LINE__);
+  INFO("%d: Pod manager sampling", __LINE__);
 
   pthread_detach(tid);
 

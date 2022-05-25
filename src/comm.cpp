@@ -312,7 +312,7 @@ char *parse_export_request(char *buf, char **name, size_t *name_len, reqid_t *id
   uuid_len_ = get_msg_data<int32_t>(buf, pos);;
   uuid_ = buf +  sizeof(int32_t);
   pos += uuid_len_ + 1; // uuid 
-  DEBUG("name: %s, name_len_:%ld, reqtype size %d, id_ %d, type %d\n", name_, name_len_, sizeof(comm_request_t), id_, type_);
+  // DEBUG("name: %s, name_len_:%ld, reqtype size %d, id_ %d, type %d\n", name_, name_len_, sizeof(comm_request_t), id_, type_);
 
   if (name != nullptr) *name = name_;
   if (name_len != nullptr) *name_len = name_len_;

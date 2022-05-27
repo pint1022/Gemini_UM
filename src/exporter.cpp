@@ -73,6 +73,7 @@ using std::chrono::steady_clock;
 #define GPU_LIST_MAX (GPU_ID_LEN * GPU_ON_NODE)
 char sample_file_dir[PATH_MAX] = ".";
 char gpu_list[GPU_LIST_MAX] = ".";
+std::list<Record> sample_list ;
 
 //
 // PRF: profiling 
@@ -109,15 +110,17 @@ inline double ms_since_start() {
 void handle_message(int client_sock, char *message) {
   reqid_t req_id;  // simply pass this req_id back to Pod manager
   comm_request_t req;
-  size_t hostname_len, offset = 0, uuid_len;
+  size_t clientname_len, offset = 0, uuid_len;
   char sbuf[SAMPLE_MSG_LEN];
   char *attached, *client_name, *uuid;
+  Record _record;
 
-  // DEBUG("received msg:[%x]", message);
+  DEBUG("received msg:[%x]", message);
 // char *parse_export_request(char *buf, char **name, size_t *name_len, reqid_t *id, comm_request_t *type, char** uuid, size_t * uuid_len) ;
 
-  attached = parse_export_request(message, &client_name, &hostname_len, &req_id, &req, &uuid, &uuid_len);
-  // DEBUG("name: %s, name_len_:%d, req %d\n", client_name, hostname_len, req);
+  // attached = parse_export_request(message, &client_name, &clientname_len, &req_id, &req, &uuid, &uuid_len);
+  attached = parse_export_request(message, &client_name, &clientname_len, &req_id, &req);  
+  DEBUG("name: %s, name_len_:%d, req %d\n", client_name, clientname_len, req);
 
   bzero(sbuf, RSP_MSG_LEN);
 
@@ -125,20 +128,41 @@ void handle_message(int client_sock, char *message) {
     DEBUG("Req (%s): query.", client_name);
 
   } else if (req == REQ_REC) {
-    DEBUG("NOT implemented --- Req (%s): record.", client_name);
+    INFO("Recording Req (%s): record.", client_name);
     // send(client_sock, sbuf, RSP_MSG_LEN, 0);
+      // _record.ts = duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+      strncpy(_record.name, client_name, clientname_len);
+      offset = 0;
+      int msg_len = get_msg_data<int32_t>(attached, offset);
+      strncpy(_record.uuid, attached + offset, msg_len);
+      offset += msg_len;
+      msg_len = get_msg_data<int32_t>(attached, offset);
+      strncpy(_record.jsonstr, attached + offset, msg_len);
+      INFO("UUID (%s): msg: %s", uuid, _record.jsonstr);
+      sample_list.push_back(_record);    
   } 
   else if (req == REQ_SAMPLE) {
-    // DEBUG("Req: sampling.");
-    int burst_ = 100;
-    char *sample = "{\"Ts\": 1234567890, \"Bs\": 100, \"Ou\": 200, \"Ws\": 300, \"Hd\": 400, \"Dh\": 500}";
-    char *podname = "test";
-    char *uuid = "GPU-4317df59-a60c-7248-52ce-a13ac128d652";
+    DEBUG("Req: sampling.");
+    // int burst_ = 100;
+    // char *sample = "{\"Ts\": 1234567890, \"Bs\": 100, \"Ou\": 200, \"Ws\": 300, \"Hd\": 400, \"Dh\": 500}";
+    // char *podname = "test";
+    // char *uuid = "GPU-4317df59-a60c-7248-52ce-a13ac128d652";
+    if (sample_list.size() > 0) {
 
-    offset = prepare_sample(sbuf, req_id, sample, podname, uuid);
-    // INFO("Resp: %d, length %d", offset, strlen(sample));
+      for (auto it = sample_list.begin(); it != sample_list.end() ; it++) {
+        offset = prepare_sample(sbuf, req_id, it->jsonstr, it->name, it->uuid);
+        it = sample_list.erase(it);
+        // INFO("Resp: %d, length %d", offset, strlen(sample));
+        send(client_sock, sbuf, SAMPLE_MSG_LEN, 0);    
+      }
+    } else {
+      char *sample = "{\"Ts\": , \"Bs\": 0, \"Ou\": 0, \"Ws\": 0, \"Hd\": 0, \"Dh\": 0}";
+      char *podname = "test";
+      char *uuid = "no data";      
+      offset = prepare_sample(sbuf, req_id, sample, podname, uuid);
+      send(client_sock, sbuf, SAMPLE_MSG_LEN, 0);    
+    }
 
-    send(client_sock, sbuf, SAMPLE_MSG_LEN, 0);    
   } else {
     WARNING("\"%s\" receive an unknown request.", client_name);
   }
@@ -149,7 +173,7 @@ void handle_message(int client_sock, char *message) {
 // 
 void *sampler_service_func(void *args) {
   int server_sockfd = *((int *)args);
-  char *rbuf = new char[REQ_MSG_LEN];
+  char *rbuf = new char[SAMPLE_MSG_LEN];
   ssize_t recv_rc;
   while ((recv_rc = recv(server_sockfd, rbuf, REQ_MSG_LEN, 0)) > 0) {
     DEBUG("recv: %d\n", recv_rc);

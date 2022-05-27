@@ -147,6 +147,8 @@ int retrieve_mem_info(int sockfd, const int MAX_RETRY, const long RETRY_TIMEOUT)
   attached = parse_response(rbuf, nullptr);
   gpu_mem_used = get_msg_data<size_t>(attached, pos);  // should be 0
   gpu_mem_limit = get_msg_data<size_t>(attached, pos);
+  a_sample.memsize = gpu_mem_used;
+
   assert(gpu_mem_used == (size_t)0);
   INFO("GPU memory limit: %lu bytes.", gpu_mem_limit);
   return 0;
@@ -187,25 +189,29 @@ void pack_sample(char* buf, Sample &_sample) {
 void *sampling_thread(void * args) {
   int export_sock = *((int *)args);  
   // const int kHeartbeatIntv = 500;
-  const int kHeartbeatIntv = SAMPLING_RATE;
+  const int kSampleIntv = SAMPLING_RATE;
   int save_data = STORE_FACT;
   reqid_t req_id = 0;  // simply pass this req_id back to Pod manager
   char sbuf[SAMPLE_MSG_LEN], rbuf[RSP_MSG_LEN], *attached;
   int rc;
 
-  DEBUG("start sampling in podmanager: %d", kHeartbeatIntv);
+  DEBUG("start sampling in podmanager: %d", kSampleIntv);
   while (true) {
     if (!InSampling)
        break;
-    std::this_thread::sleep_for(std::chrono::milliseconds(kHeartbeatIntv));       
-    // bzero(&a_sample, sizeof(Sample));
+    std::this_thread::sleep_for(std::chrono::milliseconds(kSampleIntv));       
+
     a_sample.ts = duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
     a_sample.memsize = gpu_mem_used;
-    // char *sample = "{\"Ts\": 1234567890, \"Bs\": 100, \"Ou\": 200, \"Ws\": 300, \"Hd\": 400, \"Dh\": 500}";
     char sample[SAMPLE_LEN];
+
     pack_sample(sample, a_sample);
+    bzero(sbuf, SAMPLE_MSG_LEN);
 
     prepare_export_request(sbuf, sample, pod_name, UUID);
+    // DEBUG("Podmanager Sample: %s, pod_name %s, uuid %s", sample, pod_name, UUID);
+    DEBUG("Podmanager msg: %x", sbuf);
+
     send(export_sock, sbuf, SAMPLE_MSG_LEN, 0); 
 
   }
@@ -614,7 +620,7 @@ void *scheduler_thread_recv_func(void *args) {
     attached = parse_response(buf, &req_id);
     rsp.data = new char[RSP_MSG_LEN - sizeof(reqid_t)];
     memcpy(rsp.data, attached, RSP_MSG_LEN - sizeof(reqid_t));
-    DEBUG("req_id %d complete.", req_id);
+    // DEBUG("req_id %d complete.", req_id);
 
     // put response data into response_map and notify hook threads
     pthread_mutex_lock(&rsp_map_mutex);

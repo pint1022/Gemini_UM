@@ -72,7 +72,8 @@ const int STORE_FACT = 5;
 // bool InSampling = true;
 const int SAMPLE_COUNT = 3;
 
-char *parse_export_request(char *buf, char **name, size_t *name_len, reqid_t *id, comm_request_t *type, char** uuid, size_t * uuid_len) ;
+// char *parse_export_request(char *buf, char **name, size_t *name_len, reqid_t *id, comm_request_t *type, char** uuid, size_t * uuid_len) ;
+char *parse_export_request(char *buf, char **name, size_t *name_len, reqid_t *id, comm_request_t *type) ;
 reqid_t prepare_export_request(char *buf, char *sample, char *podname, char *uuid) ;
 
 struct Sample {
@@ -91,4 +92,10 @@ struct Sample {
   double remain;
 };
 void Sampling();
+
+struct Record {
+  char name[POD_NAME_LEN + 1];
+  char uuid[UUID_LEN + 1];
+  char jsonstr[SAMPLE_LEN];
+};
 #endif

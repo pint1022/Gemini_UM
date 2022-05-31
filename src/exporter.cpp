@@ -74,6 +74,7 @@ using std::chrono::steady_clock;
 char sample_file_dir[PATH_MAX] = ".";
 char gpu_list[GPU_LIST_MAX] = ".";
 std::list<Record> sample_list ;
+pthread_mutex_t sample_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 //
 // PRF: profiling 
@@ -115,12 +116,12 @@ void handle_message(int client_sock, char *message) {
   char *attached, *client_name, *uuid;
   Record _record;
 
-  DEBUG("received msg:[%x]", message);
+  // DEBUG("received msg:[%x]", message);
 // char *parse_export_request(char *buf, char **name, size_t *name_len, reqid_t *id, comm_request_t *type, char** uuid, size_t * uuid_len) ;
 
   // attached = parse_export_request(message, &client_name, &clientname_len, &req_id, &req, &uuid, &uuid_len);
   attached = parse_export_request(message, &client_name, &clientname_len, &req_id, &req);  
-  DEBUG("name: %s, name_len_:%d, req %d\n", client_name, clientname_len, req);
+  // DEBUG("name: %s, name_len_:%d, req %d\n", client_name, clientname_len, req);
 
   bzero(sbuf, RSP_MSG_LEN);
 
@@ -134,12 +135,29 @@ void handle_message(int client_sock, char *message) {
       strncpy(_record.name, client_name, clientname_len);
       offset = 0;
       int msg_len = get_msg_data<int32_t>(attached, offset);
-      strncpy(_record.uuid, attached + offset, msg_len);
-      offset += msg_len;
+      char * tmp;
+      if (msg_len > UUID_LEN) {
+         tmp = attached + offset + msg_len - UUID_LEN;
+         msg_len = UUID_LEN;
+      } else {
+        tmp = attached + offset;
+      }
+      strncpy(_record.uuid, tmp, msg_len);
+      // INFO("UUID (%s): msg_len: %d", _record.uuid, msg_len);
+      offset += msg_len + 1;
       msg_len = get_msg_data<int32_t>(attached, offset);
-      strncpy(_record.jsonstr, attached + offset, msg_len);
-      INFO("UUID (%s): msg: %s", uuid, _record.jsonstr);
+      if (msg_len > SAMPLE_LEN) {
+         tmp = attached + offset + msg_len - SAMPLE_LEN;
+         msg_len = SAMPLE_LEN;
+      } else {
+        tmp = attached + offset;
+      }
+      strncpy(_record.jsonstr, tmp, msg_len);
+      // INFO("str (%s): msg_len: %d", _record.jsonstr, msg_len);
+      pthread_mutex_lock(&sample_mutex);
       sample_list.push_back(_record);    
+      pthread_mutex_unlock(&sample_mutex);
+
   } 
   else if (req == REQ_SAMPLE) {
     DEBUG("Req: sampling.");
@@ -148,18 +166,33 @@ void handle_message(int client_sock, char *message) {
     // char *podname = "test";
     // char *uuid = "GPU-4317df59-a60c-7248-52ce-a13ac128d652";
     if (sample_list.size() > 0) {
+      // INFO("Sample count %d", sample_list.size());
+      bool isSent = false;
+      pthread_mutex_lock(&sample_mutex);
 
       for (auto it = sample_list.begin(); it != sample_list.end() ; it++) {
         offset = prepare_sample(sbuf, req_id, it->jsonstr, it->name, it->uuid);
+        int _len = strlen(it->jsonstr);
+        // INFO("Resp: %d, length %d, sample %s", offset, strlen(it->jsonstr), it->jsonstr);
         it = sample_list.erase(it);
-        // INFO("Resp: %d, length %d", offset, strlen(sample));
-        send(client_sock, sbuf, SAMPLE_MSG_LEN, 0);    
+        if (( _len > 0 ) && ( !isSent ) ){
+             send(client_sock, sbuf, SAMPLE_MSG_LEN, 0);    
+             isSent = true;
+        } else {
+          break;
+        }
       }
+      pthread_mutex_unlock(&sample_mutex);
+
     } else {
-      char *sample = "{\"Ts\": , \"Bs\": 0, \"Ou\": 0, \"Ws\": 0, \"Hd\": 0, \"Dh\": 0}";
+      // _record.ts = duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+
+      char buf[SAMPLE_LEN];
+        sprintf(buf, "{\"Ts\": %ld, \"Bs\": 0, \"Ou\": 0, \"Dh\": 0, \"Hd\": 0}",duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count());
+      INFO("No samples: ");
       char *podname = "test";
-      char *uuid = "no data";      
-      offset = prepare_sample(sbuf, req_id, sample, podname, uuid);
+      char *uuid = "NONE";      
+      offset = prepare_sample(sbuf, req_id, buf, podname, uuid);
       send(client_sock, sbuf, SAMPLE_MSG_LEN, 0);    
     }
 
@@ -176,10 +209,10 @@ void *sampler_service_func(void *args) {
   char *rbuf = new char[SAMPLE_MSG_LEN];
   ssize_t recv_rc;
   while ((recv_rc = recv(server_sockfd, rbuf, REQ_MSG_LEN, 0)) > 0) {
-    DEBUG("recv: %d\n", recv_rc);
+    // DEBUG("recv: %d\n", recv_rc);
     handle_message(server_sockfd, rbuf);
   }
-  DEBUG("Alnair Exporter: Connection closed. recv() returns %ld.", recv_rc);
+  DEBUG("Alnair Exporter Server: Connection closed. recv() returns %ld.", recv_rc);
   close(server_sockfd);
   delete (int *)args;
   delete[] rbuf;

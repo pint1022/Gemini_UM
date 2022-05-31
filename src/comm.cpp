@@ -293,39 +293,11 @@ reqid_t prepare_export_request(char *buf, char *sample, char *podname, char *uui
   strncpy(buf + pos, sample, _len);
   pos += _len;
   // append_msg_data(buf, pos, '\0');  // append a terminator
-  DEBUG("MSG: %s, pos %d", buf, pos);
+  // DEBUG("MSG: %s, pos %d", buf, pos);
 
   return sample_id++;
 }
 
-// template <typename T>
-// char *parse_export_request(char *buf, char **name, size_t *name_len, reqid_t *id, comm_request_t *type, char** uuid, size_t * uuid_len) {
-//   size_t pos = 0;
-//   int32_t name_len_, uuid_len_;
-//   char *name_, *uuid_, *msg_;
-//   reqid_t id_;
-//   comm_request_t type_;
-
-
-//   name_len_ = get_msg_data<T>(buf, pos);;
-//   name_ = buf +  sizeof(T);
-//   pos += name_len_ + 1;  // 1 for the terminator
-//   DEBUG("MSG: %x, name_len %d, name %s", buf, name_len_, name_);
-//   id_ = get_msg_data<reqid_t>(buf, pos);
-//   type_ = get_msg_data<comm_request_t>(buf, pos);
-//   uuid_len_ = get_msg_data<T>(buf, pos);;
-//   uuid_ = buf +  sizeof(T);
-//   pos += uuid_len_ + 1; // uuid 
-//   // DEBUG("name: %s, name_len_:%ld, reqtype size %d, id_ %d, type %d\n", name_, name_len_, sizeof(comm_request_t), id_, type_);
-
-//   if (name != nullptr) *name = name_;
-//   if (name_len != nullptr) *name_len = name_len_;
-//   if (id != nullptr) *id = id_;
-//   if (type != nullptr) *type = type_;
-//   if (uuid_ != nullptr) *uuid = uuid_;
-//   if (uuid_len != nullptr) *uuid_len = uuid_len_;
-//   return buf + pos;
-// }
 
 char *parse_export_request(char *buf, char **name, size_t *name_len, reqid_t *id, comm_request_t *type) {
   size_t pos = 0;
@@ -338,7 +310,7 @@ char *parse_export_request(char *buf, char **name, size_t *name_len, reqid_t *id
   name_len_ = get_msg_data<size_t>(buf, pos);;
   name_ = buf +  sizeof(size_t);
   pos += name_len_ + 1;  // 1 for the terminator
-  DEBUG("MSG: %x, name_len %d, name %s", buf, name_len_, name_);
+  DEBUG("Request from %s ...", name_);
   id_ = get_msg_data<reqid_t>(buf, pos);
   type_ = get_msg_data<comm_request_t>(buf, pos);
   // uuid_len_ = get_msg_data<int32_t>(buf, pos);;

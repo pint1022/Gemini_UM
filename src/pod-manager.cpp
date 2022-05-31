@@ -174,7 +174,7 @@ void pack_sample(char* buf, Sample &_sample) {
 //
 // TBF: need check the length 
 //
-  sprintf(buf, "{\"Ts\": %ld, \"Bs\": %.2f, \"Ou\": %.2f, \"Rm\": %.2f, \"Mm\": %ld}",
+  sprintf(buf, "{\"Ts\": %ld, \"Bs\": %d, \"Ou\": %d, \"Rm\": %d, \"Mm\": %d}",
      _sample.ts,
      _sample.burst,
      _sample.overuse,
@@ -208,8 +208,8 @@ void *sampling_thread(void * args) {
     pack_sample(sample, a_sample);
     bzero(sbuf, SAMPLE_MSG_LEN);
 
+    DEBUG("Podmanager Sample: %s, pod_name %s, uuid %s", sample, pod_name, UUID);
     prepare_export_request(sbuf, sample, pod_name, UUID);
-    // DEBUG("Podmanager Sample: %s, pod_name %s, uuid %s", sample, pod_name, UUID);
     DEBUG("Podmanager msg: %x", sbuf);
 
     send(export_sock, sbuf, SAMPLE_MSG_LEN, 0); 

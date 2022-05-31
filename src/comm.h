@@ -81,15 +81,15 @@ struct Sample {
   std::string name;
   double start;  //kernel start time
   double end;   //kernel end time
-  double burst;   // real burst time 
+  int burst;   // real burst time 
   int quota;   //time slice quota
   int overuse; //overuse time slice
-  double h2d;   //duration of h2d memcpy
-  double d2h;   //duration of d2h memcpy
+  int h2d;   //duration of h2d memcpy
+  int d2h;   //duration of d2h memcpy
   int h2dsize;   //h2d memcpy size
   int d2hsize;   //d2h memcpy size
-  uint64_t memsize; 
-  double remain;
+  int memsize; 
+  int remain;
 };
 void Sampling();
 

@@ -174,12 +174,13 @@ void pack_sample(char* buf, Sample &_sample) {
 //
 // TBF: need check the length 
 //
-  sprintf(buf, "{\"Ts\": %ld, \"Bs\": %d, \"Ou\": %d, \"Rm\": %d, \"Mm\": %d}",
+  sprintf(buf, "{\"Ts\": %ld, \"Bs\": %d, \"Ou\": %d, \"Rm\": %d, \"Mm\": %d, \"Um\": %d}",
      _sample.ts,
      _sample.burst,
      _sample.overuse,
      _sample.remain,
-     _sample.memsize
+     _sample.memsize,
+     _sample.used
   );
 
 }
@@ -208,9 +209,9 @@ void *sampling_thread(void * args) {
     pack_sample(sample, a_sample);
     bzero(sbuf, SAMPLE_MSG_LEN);
 
-    DEBUG("Podmanager Sample: %s, pod_name %s, uuid %s", sample, pod_name, UUID);
+    // DEBUG("Podmanager Sample: %s, pod_name %s, uuid %s", sample, pod_name, UUID);
     prepare_export_request(sbuf, sample, pod_name, UUID);
-    DEBUG("Podmanager msg: %x", sbuf);
+    // DEBUG("Podmanager msg: %x", sbuf);
 
     send(export_sock, sbuf, SAMPLE_MSG_LEN, 0); 
 
@@ -518,7 +519,7 @@ double hook_kernel_launch(int sockfd, double overuse_ms, double burst) {
 
 // a thread interact with a hook library
 void *hook_thread_func(void *args) {
-  DEBUG("hook thread started.");
+  // DEBUG("hook thread started.");
   int sockfd = *((int *)args);
   char rbuf[REQ_MSG_LEN], sbuf[RSP_MSG_LEN];
   ssize_t rc;
@@ -533,12 +534,16 @@ void *hook_thread_func(void *args) {
     if (req == REQ_MEM_LIMIT) {
       // send gpu_mem_used and gpu_mem_limit to hook library
       len = prepare_response(sbuf, REQ_MEM_LIMIT, rid, gpu_mem_used, gpu_mem_limit);
+      a_sample.used = gpu_mem_used;
+      a_sample.memsize = gpu_mem_limit;
+
     } else if (req == REQ_MEM_UPDATE) {
       // update memory usage
       size_t mem_size = get_msg_data<size_t>(attached, pos);
       int allocate = get_msg_data<int>(attached, pos);
       int ok = hook_update_memory_usage(mem_size, allocate, sockfd);
       len = prepare_response(sbuf, REQ_MEM_UPDATE, rid, ok);
+
     } else if (req == REQ_QUOTA) {
       // check if there is available quota
       double overuse_ms = get_msg_data<double>(attached, pos);

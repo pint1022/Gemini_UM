@@ -88,8 +88,10 @@ struct Sample {
   int d2h;   //duration of d2h memcpy
   int h2dsize;   //h2d memcpy size
   int d2hsize;   //d2h memcpy size
-  int memsize; 
-  int remain;
+  int memsize;   // memory assigned to the pod?
+  int remain;   // memory remained for the pod
+  int used;    // memory used by the pod
+  int elapse;  // kernel elapse time
 };
 void Sampling();
 

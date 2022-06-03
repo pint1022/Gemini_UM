@@ -1,5 +1,5 @@
 /**
- * Copyright 2020 Hung-Hsin Chen, LSA Lab, National Tsing Hua University
+ * Copyright 2022 Steven Wang, Futurewei Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -92,43 +92,6 @@ char *parse_request(char *buf, char **name, size_t *name_len, reqid_t *id, comm_
   return buf + pos;
 }
 
-//
-// sampling utility 
-//
-// reqid_t prepare_record_request(char *buf, comm_request_t type, ...) {
-//   static char *client_name = nullptr;
-//   static size_t client_name_len = 0;
-//   static reqid_t id = 0;
-//   size_t pos = 0;
-//   va_list vl;
-
-//   if (client_name == nullptr) {
-//     client_name = getenv("POD_NAME");
-//     if (client_name == nullptr) {
-//       client_name = (char *)malloc(HOST_NAME_MAX);
-//       gethostname(client_name, HOST_NAME_MAX);
-//     }
-//     client_name_len = strlen(client_name);
-//   }
-
-//   append_msg_data(buf, pos, client_name_len);
-//   strncpy(buf + pos, client_name, client_name_len);
-//   pos += client_name_len;
-//   append_msg_data(buf, pos, '\0');  // append a terminator
-//   append_msg_data(buf, pos, id);
-//   append_msg_data(buf, pos, type);
-
-//   // extra information for specific types
-// if (type == REQ_REC) {
-//     va_start(vl, 2);
-//     append_msg_data(buf, pos, va_arg(vl, size_t));  // bytes
-//     append_msg_data(buf, pos, va_arg(vl, int));     // is_allocate
-//     va_end(vl);
-//   }
-
-
-//   return id++;
-// }
 
 
 size_t prepare_sample(char *buf, reqid_t id, char *sample, char *podname, char *uuid) {
@@ -181,7 +144,6 @@ size_t prepare_sample(char *buf, reqid_t id, char *sample, char *podname, char *
   append_msg_data(buf, pos, _len );
   strncpy(buf + pos, sample, _len);
   pos += _len;
-  // append_msg_data(buf, pos, '\0');  // append a terminator
 
   return pos;
 }
@@ -269,7 +231,6 @@ reqid_t prepare_export_request(char *buf, char *sample, char *podname, char *uui
   strncpy(buf + pos, tmp, _len);
   pos += _len;
   append_msg_data(buf, pos, '\0');  // append a terminator
-  // DEBUG("MSG: %x, pos %d, tmp name %s", buf, pos, tmp);
   append_msg_data(buf, pos, sample_id);
   append_msg_data(buf, pos, REQ_REC);  // request type
 
@@ -292,8 +253,7 @@ reqid_t prepare_export_request(char *buf, char *sample, char *podname, char *uui
   append_msg_data<int32_t>(buf, pos, _len );
   strncpy(buf + pos, sample, _len);
   pos += _len;
-  // append_msg_data(buf, pos, '\0');  // append a terminator
-  // DEBUG("MSG: %s, pos %d", buf, pos);
+
 
   return sample_id++;
 }
@@ -313,16 +273,11 @@ char *parse_export_request(char *buf, char **name, size_t *name_len, reqid_t *id
   DEBUG("Request from %s ...", name_);
   id_ = get_msg_data<reqid_t>(buf, pos);
   type_ = get_msg_data<comm_request_t>(buf, pos);
-  // uuid_len_ = get_msg_data<int32_t>(buf, pos);;
-  // uuid_ = buf +  sizeof(int32_t);
-  // pos += uuid_len_ + 1; // uuid 
-  // DEBUG("name: %s, name_len_:%ld, reqtype size %d, id_ %d, type %d\n", name_, name_len_, sizeof(comm_request_t), id_, type_);
 
   if (name != nullptr) *name = name_;
   if (name_len != nullptr) *name_len = name_len_;
   if (id != nullptr) *id = id_;
   if (type != nullptr) *type = type_;
-  // if (uuid_ != nullptr) *uuid = uuid_;
-  // if (uuid_len != nullptr) *uuid_len = uuid_len_;
+
   return buf + pos;
 }

@@ -153,18 +153,15 @@ void handle_message(int client_sock, char *message) {
         tmp = attached + offset;
       }
       strncpy(_record.jsonstr, tmp, msg_len);
-      // INFO("str (%s): msg_len: %d", _record.jsonstr, msg_len);
+      INFO("str (%s): msg_len: %d", _record.jsonstr, msg_len);
       pthread_mutex_lock(&sample_mutex);
       sample_list.push_back(_record);    
       pthread_mutex_unlock(&sample_mutex);
 
   } 
   else if (req == REQ_SAMPLE) {
-    DEBUG("Req: sampling.");
-    // int burst_ = 100;
-    // char *sample = "{\"Ts\": 1234567890, \"Bs\": 100, \"Ou\": 200, \"Ws\": 300, \"Hd\": 400, \"Dh\": 500}";
-    // char *podname = "test";
-    // char *uuid = "GPU-4317df59-a60c-7248-52ce-a13ac128d652";
+    DEBUG("Req: sampling. There are %d.", sample_list.size());
+
     if (sample_list.size() > 0) {
       // INFO("Sample count %d", sample_list.size());
       bool isSent = false;
@@ -189,7 +186,6 @@ void handle_message(int client_sock, char *message) {
 
       char buf[SAMPLE_LEN];
         sprintf(buf, "{\"Ts\": %ld, \"Bs\": 0, \"Ou\": 0, \"Dh\": 0, \"Hd\": 0}",duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count());
-      INFO("No samples: ");
       char *podname = "test";
       char *uuid = "NONE";      
       offset = prepare_sample(sbuf, req_id, buf, podname, uuid);

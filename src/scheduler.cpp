@@ -789,7 +789,7 @@ int main(int argc, char *argv[]) {
   g_signal_connect(monitor, "changed", G_CALLBACK(onResourceConfigFileUpdate), nullptr);
   char *fpath = g_file_get_path(file);
   // g_print("monitoring %s\n", fpath);
-  INFO("New Monitor thread created on %s.\n", fullpath);
+  // INFO("New Monitor thread created on %s.\n", fullpath);
   g_free(fpath);
  
 

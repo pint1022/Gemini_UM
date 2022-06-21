@@ -42,6 +42,7 @@ typedef enum HookSymbolsEnum {
   CU_HOOK_MEMCPY_HTOD,
   CU_HOOK_MEMCPY_HTOD_ASYNC,
   NUM_HOOK_SYMBOLS,
+  CU_HOOK_GET_PROC_ADDRESS,
 } HookSymbols;
 
 #endif /* _CUHOOK_H_ */

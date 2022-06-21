@@ -434,6 +434,7 @@ int hook_update_memory_usage(size_t mem_size, int allocate, int sockfd) {
 // handle kernel launch request, return remaining quota time (ms)
 double hook_kernel_launch(int sockfd, double overuse_ms, double burst) {
   // wait if someone else is working with quota
+
   while (true) {
     pthread_mutex_lock(&quota_state_mutex);
     if (quota_state == 0) {
@@ -546,6 +547,7 @@ void *hook_thread_func(void *args) {
 
     } else if (req == REQ_QUOTA) {
       // check if there is available quota
+      DEBUG("hook_thread req %d...", req);
       double overuse_ms = get_msg_data<double>(attached, pos);
       double burst = get_msg_data<double>(attached, pos);
       double quota_remain = hook_kernel_launch(sockfd, overuse_ms, burst);

@@ -193,7 +193,7 @@ void handle_message(int client_sock, char *message) {
     }
 
   } else {
-    WARNING("\"%s\" receive an unknown request.", client_name);
+    WARNING("\"%s\" receive an unknown request. %d !", client_name, req);
   }
 }
 

@@ -26,14 +26,15 @@
 #include <functional>
 
 typedef int32_t reqid_t;
-enum comm_request_t { REQ_QUOTA=0, REQ_MEM_LIMIT, REQ_MEM_UPDATE, REQ_SAMPLE, REQ_MEM_D2H, REQ_MEM_H2D, REQ_REC, REQ_QRY };
+enum comm_request_t { REQ_QUOTA=0, REQ_MEM_LIMIT, REQ_MEM_UPDATE, REQ_SAMPLE, REQ_MEM_D2H, REQ_MEM_H2D, REQ_REC, REQ_QRY, REQ_HD };
+enum comm_h2d_t { H2D_START=0, H2D_END, D2H_START, D2H_END};
 const size_t REQ_MSG_LEN = 128;
 const size_t RSP_MSG_LEN = 40;
 const size_t NAME_LEN = 20;
 const size_t POD_NAME_LEN = 4;
 const size_t UUID_LEN = 4;
-const size_t SAMPLE_LEN = 100;
-const size_t SAMPLE_MSG_LEN = 128;
+const size_t SAMPLE_LEN = 120;
+const size_t SAMPLE_MSG_LEN = 148;
 const size_t UUID_FULL_LEN = strlen("GPU-177586d7-7962-c76c-9be7-fdbfc63c030e") + 1;
 
 reqid_t prepare_request(char *buf, comm_request_t type, ...);

@@ -62,7 +62,13 @@ reqid_t prepare_request(char *buf, comm_request_t type, ...) {
     append_msg_data(buf, pos, va_arg(vl, size_t));  // bytes
     append_msg_data(buf, pos, va_arg(vl, int));     // is_allocate
     va_end(vl);
+  } else if (type == REQ_HD) {
+    va_start(vl, 2);
+    append_msg_data(buf, pos, va_arg(vl, size_t));  // bytes
+    append_msg_data(buf, pos, va_arg(vl, int));     // is_allocate
+    va_end(vl);
   }
+
 
 
   return id++;

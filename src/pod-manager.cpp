@@ -174,13 +174,15 @@ void pack_sample(char* buf, Sample &_sample) {
 //
 // TBF: need check the length 
 //
-  sprintf(buf, "{\"Ts\": %ld, \"Bs\": %d, \"Ou\": %d, \"Rm\": %d, \"Mm\": %d, \"Um\": %d}",
+  sprintf(buf, "{\"Ts\": %ld, \"Bs\": %d, \"Ou\": %d, \"Rm\": %d, \"Mm\": %d, \"Um\": %d, \"Hd\": %d, \"Dh\": %d}",
      _sample.ts,
      _sample.burst,
      _sample.overuse,
      _sample.remain,
      _sample.memsize,
-     _sample.used
+     _sample.used,
+     _sample.h2dsize,
+     _sample.d2hsize
   );
 
 }
@@ -547,7 +549,7 @@ void *hook_thread_func(void *args) {
 
     } else if (req == REQ_QUOTA) {
       // check if there is available quota
-      DEBUG("hook_thread req %d...", req);
+      // DEBUG("hook_thread req %d...", req);
       double overuse_ms = get_msg_data<double>(attached, pos);
       double burst = get_msg_data<double>(attached, pos);
       double quota_remain = hook_kernel_launch(sockfd, overuse_ms, burst);
@@ -559,7 +561,25 @@ void *hook_thread_func(void *args) {
       a_sample.burst = burst;
       a_sample.overuse = overuse_ms;
       a_sample.remain = quota_remain;
-     
+    } else if (req == REQ_HD) {
+      //
+      // update status from hook
+      //
+      size_t mem_size = get_msg_data<size_t>(attached, pos);
+      int is_h2d = get_msg_data<int>(attached, pos);
+      switch (is_h2d) {
+        case H2D_START:     // h2d start
+                a_sample.h2dsize = mem_size;
+                break;
+        case D2H_START:     // d2h start
+                a_sample.d2hsize = mem_size;
+                break;
+        default:
+              ERROR("Unknown type memory op: %d!", is_h2d);
+              break;
+      }
+
+      // len = prepare_response(sbuf, REQ_HD, 0, 1);
     }
 
     if (len > 0) {
